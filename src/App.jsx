@@ -351,7 +351,7 @@ function SelectCard({ active, onClick, text, compact, icon }) {
 // =====================================================================
 // PIN LOCK
 // =====================================================================
-const ADMIN_PIN = "1234"; // cámbialo aquí por el PIN que quieras usar en el local
+const ADMIN_PIN = "2011"; // cámbialo aquí por el PIN que quieras usar en el local
 
 function PinScreen({ onUnlock, onBack }) {
   const [pin, setPin] = useState("");
