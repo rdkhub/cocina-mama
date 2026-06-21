@@ -16,6 +16,31 @@ const PAY_COLORS = {
   fiado: "#C1452D",
 };
 
+// ---------- Precios ----------
+const PRECIO_MENU_COMPLETO = 12; // 1 fondo + 1 entrada (agua incluida, siempre gratis)
+const PRECIO_FONDO_SOLO = 11; // fondo sin entrada que lo acompañe
+const PRECIO_ENTRADA_SOLA = 3; // entrada sin fondo que la acompañe
+
+// Suma cantidades de un arreglo [{ nombre, cantidad }, ...]
+function sumarCantidades(items) {
+  return (items || []).reduce((acc, it) => acc + (it.cantidad || 0), 0);
+}
+
+// Calcula el total a pagar: empareja fondos con entradas de uno en uno
+// (cada par = menú completo a S/12), y cobra aparte lo que sobre de cada lado.
+function calcularTotal(fondos, entradas) {
+  const totalFondos = sumarCantidades(fondos);
+  const totalEntradas = sumarCantidades(entradas);
+  const menusCompletos = Math.min(totalFondos, totalEntradas);
+  const fondosSolos = totalFondos - menusCompletos;
+  const entradasSolas = totalEntradas - menusCompletos;
+  return (
+    menusCompletos * PRECIO_MENU_COMPLETO +
+    fondosSolos * PRECIO_FONDO_SOLO +
+    entradasSolas * PRECIO_ENTRADA_SOLA
+  );
+}
+
 // ---------- Small UI atoms ----------
 function Tag({ children, color }) {
   return (
@@ -67,6 +92,10 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
 
   const totalFondos = fondoQty.reduce((a, b) => a + b, 0);
   const totalEntradas = entradaQty.reduce((a, b) => a + b, 0);
+  const totalPagar = calcularTotal(
+    menu.fondos.map((_, i) => ({ cantidad: fondoQty[i] })),
+    menu.entradas.map((_, i) => ({ cantidad: entradaQty[i] }))
+  );
 
   const bump = (arr, setArr, i, delta) => {
     const copy = [...arr];
@@ -98,6 +127,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
       direccion: modo === "delivery" ? direccion.trim() : "",
       pago,
       notas: notas.trim(),
+      total: calcularTotal(fondos, entradas),
     });
   };
 
@@ -124,6 +154,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
               <Row label={justSubmitted.bebida.cantidad > 1 ? `Bebida (x${justSubmitted.bebida.cantidad})` : "Bebida"} value={justSubmitted.bebida.nombre} />
             )}
             <Row label="Pago" value={PAY_LABELS[justSubmitted.pago]} />
+            <Row label="Total a pagar" value={`S/ ${justSubmitted.total.toFixed(2)}`} />
           </div>
           <button
             onClick={onReset}
@@ -261,6 +292,12 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                   </div>
                 )}
               </div>
+              <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#463f33]">
+                <span className="text-[15px] font-medium">Total a pagar</span>
+                <span className="text-[#E0A95C] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                  S/ {totalPagar.toFixed(2)}
+                </span>
+              </div>
             </div>
           )}
 
@@ -351,7 +388,7 @@ function SelectCard({ active, onClick, text, compact, icon }) {
 // =====================================================================
 // PIN LOCK
 // =====================================================================
-const ADMIN_PIN = "2011"; // cámbialo aquí por el PIN que quieras usar en el local
+const ADMIN_PIN = "1234"; // cámbialo aquí por el PIN que quieras usar en el local
 
 function PinScreen({ onUnlock, onBack }) {
   const [pin, setPin] = useState("");
@@ -430,13 +467,18 @@ function PinScreen({ onUnlock, onBack }) {
 // ADMIN VIEW
 // =====================================================================
 function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onBack }) {
-  const [tab, setTab] = useState("pedidos"); // pedidos | menu | deudas
+  const [tab, setTab] = useState("pedidos"); // pedidos | menu | deudas | historial
   const [draft, setDraft] = useState(menu);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [fechaHistorial, setFechaHistorial] = useState(todayKey());
 
   useEffect(() => setDraft(menu), [menu]);
 
   const todaysOrders = orders.filter((o) => o.fecha === todayKey());
+  const totalVendidoHoy = todaysOrders.reduce(
+    (acc, o) => acc + (typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas)),
+    0
+  );
 
   const updateList = (field, idx, value) => {
     const copy = { ...draft, [field]: [...draft[field]] };
@@ -455,12 +497,22 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
   orders.forEach((o) => {
     if (o.pago === "fiado" && !o.pagado) {
       const key = `${o.nombre}|${o.telefono}`;
-      if (!deudas[key]) deudas[key] = { nombre: o.nombre, telefono: o.telefono, pedidos: [], total: 0 };
+      const montoPedido = typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas);
+      if (!deudas[key]) deudas[key] = { nombre: o.nombre, telefono: o.telefono, pedidos: [], cantidad: 0, monto: 0 };
       deudas[key].pedidos.push(o);
-      deudas[key].total += 1;
+      deudas[key].cantidad += 1;
+      deudas[key].monto += montoPedido;
     }
   });
-  const deudaList = Object.values(deudas).sort((a, b) => b.total - a.total);
+  const deudaList = Object.values(deudas).sort((a, b) => b.monto - a.monto);
+
+  // Historial: lista de fechas distintas con pedidos, más recientes primero
+  const fechasConPedidos = Array.from(new Set(orders.map((o) => o.fecha))).sort((a, b) => b.localeCompare(a));
+  const ordersDelDia = orders.filter((o) => o.fecha === fechaHistorial);
+  const totalDelDia = ordersDelDia.reduce(
+    (acc, o) => acc + (typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas)),
+    0
+  );
 
   return (
     <div className="min-h-screen bg-[#FBF6EC]">
@@ -477,16 +529,17 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
       </div>
 
       <div className="max-w-3xl mx-auto px-5">
-        <div className="flex gap-1 -mt-px bg-white rounded-xl border border-[#eee2cb] p-1 mt-4 mb-5">
+        <div className="flex gap-1 -mt-px bg-white rounded-xl border border-[#eee2cb] p-1 mt-4 mb-5 overflow-x-auto">
           {[
-            { id: "pedidos", label: `Pedidos de hoy (${todaysOrders.length})` },
-            { id: "menu", label: "Editar menú" },
+            { id: "pedidos", label: `Hoy (${todaysOrders.length})` },
+            { id: "menu", label: "Menú" },
             { id: "deudas", label: `Deben (${deudaList.length})` },
+            { id: "historial", label: "Historial" },
           ].map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 text-[13px] py-2 rounded-lg font-medium transition ${
+              className={`flex-1 text-[13px] py-2 rounded-lg font-medium transition whitespace-nowrap ${
                 tab === t.id ? "bg-[#2B2622] text-white" : "text-[#8a7d6b]"
               }`}
             >
@@ -496,18 +549,28 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
         </div>
 
         {tab === "pedidos" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-10">
-            {todaysOrders.length === 0 && (
-              <div className="sm:col-span-2">
-                <EmptyState text="Aún no han llegado pedidos hoy. En cuanto alguien pida desde la página, aparece aquí al instante." />
+          <div className="pb-10">
+            {todaysOrders.length > 0 && (
+              <div className="bg-[#2B2622] rounded-2xl p-4 mb-4 flex items-center justify-between">
+                <span className="text-[#cfc3ad] text-sm">Total vendido hoy</span>
+                <span className="text-[#E0A95C] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                  S/ {totalVendidoHoy.toFixed(2)}
+                </span>
               </div>
             )}
-            {todaysOrders
-              .slice()
-              .reverse()
-              .map((o) => (
-                <OrderCard key={o.id} order={o} onUpdate={onOrderUpdate} onDelete={onOrderDelete} />
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {todaysOrders.length === 0 && (
+                <div className="sm:col-span-2">
+                  <EmptyState text="Aún no han llegado pedidos hoy. En cuanto alguien pida desde la página, aparece aquí al instante." />
+                </div>
+              )}
+              {todaysOrders
+                .slice()
+                .reverse()
+                .map((o) => (
+                  <OrderCard key={o.id} order={o} onUpdate={onOrderUpdate} onDelete={onOrderDelete} />
+                ))}
+            </div>
           </div>
         )}
 
@@ -555,15 +618,20 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                       <Phone size={12} /> {d.telefono}
                     </div>
                   </div>
-                  <Tag color="#C1452D">{d.total} pedido{d.total > 1 ? "s" : ""} sin pagar</Tag>
+                  <div className="text-right">
+                    <Tag color="#C1452D">S/ {d.monto.toFixed(2)}</Tag>
+                    <div className="text-[11px] text-[#a89a86] mt-1">{d.cantidad} pedido{d.cantidad > 1 ? "s" : ""}</div>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                 {d.pedidos.map((p) => {
                     const resumen = p.fondos.map((f) => (f.cantidad > 1 ? `${f.nombre} x${f.cantidad}` : f.nombre)).join(", ");
+                    const montoPedido = typeof p.total === "number" ? p.total : calcularTotal(p.fondos, p.entradas);
                     return (
                     <div key={p.id} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2 text-[13px]">
                       <span className="text-[#5c5246]">
                         {p.fecha} &middot; {resumen.length > 28 ? resumen.slice(0, 28) + "…" : resumen}
+                        <span className="text-[#C1452D] font-medium"> &middot; S/ {montoPedido.toFixed(2)}</span>
                       </span>
                       <button
                         onClick={() => onOrderUpdate(p.id, { pagado: true })}
@@ -576,6 +644,50 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === "historial" && (
+          <div className="pb-10">
+            <Field label="Ver pedidos del día">
+              <select
+                className={inputStyle}
+                value={fechaHistorial}
+                onChange={(e) => setFechaHistorial(e.target.value)}
+              >
+                {fechasConPedidos.length === 0 && <option value={todayKey()}>Hoy &middot; {todayLabel()}</option>}
+                {fechasConPedidos.map((f) => (
+                  <option key={f} value={f}>
+                    {f === todayKey() ? `Hoy · ${f}` : f}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            {ordersDelDia.length > 0 && (
+              <div className="bg-[#2B2622] rounded-2xl p-4 my-4 flex items-center justify-between">
+                <span className="text-[#cfc3ad] text-sm">
+                  Total vendido &middot; {ordersDelDia.length} pedido{ordersDelDia.length > 1 ? "s" : ""}
+                </span>
+                <span className="text-[#E0A95C] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                  S/ {totalDelDia.toFixed(2)}
+                </span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              {ordersDelDia.length === 0 && (
+                <div className="sm:col-span-2">
+                  <EmptyState text="No hay pedidos registrados en esa fecha." />
+                </div>
+              )}
+              {ordersDelDia
+                .slice()
+                .reverse()
+                .map((o) => (
+                  <OrderCard key={o.id} order={o} onUpdate={onOrderUpdate} onDelete={onOrderDelete} />
+                ))}
+            </div>
           </div>
         )}
       </div>
@@ -592,6 +704,7 @@ function EmptyState({ text }) {
 }
 
 function OrderCard({ order, onUpdate, onDelete }) {
+  const total = typeof order.total === "number" ? order.total : calcularTotal(order.fondos, order.entradas);
   return (
     <div className="bg-white rounded-2xl border border-[#eee2cb] p-4">
       <div className="flex items-start justify-between mb-2.5">
@@ -603,9 +716,14 @@ function OrderCard({ order, onUpdate, onDelete }) {
             {new Date(order.creadoEn).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}
           </div>
         </div>
-        <button onClick={() => onDelete(order.id)} className="text-[#c7b89a] hover:text-[#C1452D] p-1">
-          <Trash2 size={16} />
-        </button>
+        <div className="text-right">
+          <div className="text-[#C1452D] font-semibold text-[15px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            S/ {total.toFixed(2)}
+          </div>
+          <button onClick={() => onDelete(order.id)} className="text-[#c7b89a] hover:text-[#C1452D] p-1">
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="text-[14px] text-[#3a332b] space-y-0.5 mb-3">
