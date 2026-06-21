@@ -78,11 +78,12 @@ const inputStyle =
 function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
-  // cantidades[i] = cantidad pedida del fondo i / entrada i
-  const [fondoQty, setFondoQty] = useState(menu.fondos.map(() => 0));
+  // fondoSeleccion[i] = array con una entrada por cada unidad pedida del fondo i.
+  // Cada entrada es la proteína elegida para ESA unidad ("" si el plato no usa proteínas).
+  // Ej: fondoSeleccion[0] = ["Milanesa", "Plancha"] significa 2 unidades del fondo 0,
+  // una con Milanesa y otra con Plancha.
+  const [fondoSeleccion, setFondoSeleccion] = useState(menu.fondos.map(() => []));
   const [entradaQty, setEntradaQty] = useState(menu.entradas.map(() => 0));
-  // proteinaElegida[i] = qué proteína eligió el cliente para el fondo i (si ese plato tiene opciones)
-  const [proteinaElegida, setProteinaElegida] = useState(menu.fondos.map(() => ""));
   const [bebidaQty, setBebidaQty] = useState(0);
   const [modo, setModo] = useState("recojo"); // recojo | delivery
   const [direccion, setDireccion] = useState("");
@@ -90,6 +91,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
   const [notas, setNotas] = useState("");
   const [error, setError] = useState("");
 
+  const fondoQty = fondoSeleccion.map((arr) => arr.length);
   const totalFondos = fondoQty.reduce((a, b) => a + b, 0);
   const totalEntradas = entradaQty.reduce((a, b) => a + b, 0);
   const totalPagar = calcularTotal(
@@ -113,6 +115,28 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
       .filter(Boolean);
   };
 
+  // Agrega una unidad del fondo i con la proteína indicada ("" si no aplica)
+  const agregarFondo = (i, proteina) => {
+    const copy = fondoSeleccion.map((arr) => [...arr]);
+    copy[i].push(proteina);
+    setFondoSeleccion(copy);
+  };
+
+  // Quita la última unidad agregada del fondo i (o una proteína específica si se indica)
+  const quitarFondo = (i, proteinaEspecifica = null) => {
+    const copy = fondoSeleccion.map((arr) => [...arr]);
+    if (proteinaEspecifica !== null) {
+      const idx = copy[i].lastIndexOf(proteinaEspecifica);
+      if (idx !== -1) copy[i].splice(idx, 1);
+    } else {
+      copy[i].pop();
+    }
+    setFondoSeleccion(copy);
+  };
+
+  // Cuenta cuántas unidades del fondo i tienen una proteína específica
+  const contarProteina = (i, proteina) => fondoSeleccion[i].filter((p) => p === proteina).length;
+
   const handleSubmit = () => {
     if (!nombre.trim()) return setError("Falta tu nombre.");
     if (!telefono.trim()) return setError("Falta tu número de teléfono.");
@@ -120,17 +144,26 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
     if (modo === "delivery" && !direccion.trim()) return setError("Falta la dirección de entrega.");
     setError("");
 
-    const fondos = menu.fondos
-      .map((plato, i) =>
-        fondoQty[i] > 0
-          ? {
-              nombre: plato.nombre,
-              cantidad: fondoQty[i],
-              ...(proteinaElegida[i] ? { proteina: proteinaElegida[i] } : {}),
-            }
-          : null
-      )
-      .filter(Boolean);
+    // Agrupa las unidades de cada fondo por proteína elegida, para no repetir
+    // una línea por cada unidad individual (ej: 2 con Milanesa = una línea x2).
+    const fondos = [];
+    menu.fondos.forEach((plato, i) => {
+      const seleccion = fondoSeleccion[i];
+      if (seleccion.length === 0) return;
+      const porProteina = {};
+      seleccion.forEach((proteina) => {
+        const key = proteina || "__sin__";
+        porProteina[key] = (porProteina[key] || 0) + 1;
+      });
+      Object.entries(porProteina).forEach(([key, cantidad]) => {
+        fondos.push({
+          nombre: plato.nombre,
+          cantidad,
+          ...(key !== "__sin__" ? { proteina: key } : {}),
+        });
+      });
+    });
+
     const entradas = menu.entradas
       .map((nombrePlato, i) => (entradaQty[i] > 0 ? { nombre: nombrePlato, cantidad: entradaQty[i] } : null))
       .filter(Boolean);
@@ -236,33 +269,57 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             <div className="space-y-2">
               {menu.fondos.map((f, i) => {
                 const opciones = opcionesProteina(i);
+                if (opciones.length === 0) {
+                  // Plato sin opciones de proteína: un solo contador, como antes.
+                  return (
+                    <QtyCard
+                      key={i}
+                      text={f.nombre}
+                      qty={fondoQty[i]}
+                      onChange={(d) => (d > 0 ? agregarFondo(i, "") : quitarFondo(i))}
+                    />
+                  );
+                }
+                // Plato con opciones de proteína: un contador independiente por cada opción,
+                // así se puede pedir, por ejemplo, 1 con Milanesa y 1 con Plancha del mismo plato.
                 return (
-                  <div key={i}>
-                    <QtyCard text={f.nombre} qty={fondoQty[i]} onChange={(d) => bump(fondoQty, setFondoQty, i, d)} />
-                    {fondoQty[i] > 0 && opciones.length > 0 && (
-                      <div className="mt-1.5 pl-1">
-                        <span className="text-[12px] text-[#8a7d6b] block mb-1.5">¿Con qué proteína?</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {opciones.map((op) => (
-                            <button
-                              key={op}
-                              onClick={() => {
-                                const copy = [...proteinaElegida];
-                                copy[i] = op;
-                                setProteinaElegida(copy);
-                              }}
-                              className={`text-[13px] px-3 py-1.5 rounded-full border-2 transition ${
-                                proteinaElegida[i] === op
-                                  ? "border-[#C1452D] bg-white font-semibold text-[#2B2622]"
-                                  : "border-[#e8ddc8] bg-white text-[#5c5246]"
-                              }`}
-                            >
-                              {op}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  <div key={i} className={`rounded-xl border-2 p-3 ${fondoQty[i] > 0 ? "border-[#C1452D] bg-white" : "border-[#e8ddc8] bg-white"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-[14px] ${fondoQty[i] > 0 ? "font-semibold text-[#2B2622]" : "text-[#5c5246]"}`}>
+                        {f.nombre}
+                      </span>
+                      {fondoQty[i] > 0 && (
+                        <span className="text-[13px] text-[#C1452D] font-medium">x{fondoQty[i]}</span>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      {opciones.map((op) => {
+                        const cant = contarProteina(i, op);
+                        return (
+                          <div key={op} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2">
+                            <span className={`text-[13px] ${cant > 0 ? "font-medium text-[#2B2622]" : "text-[#8a7d6b]"}`}>{op}</span>
+                            <div className="flex items-center gap-2.5">
+                              <button
+                                onClick={() => quitarFondo(i, op)}
+                                disabled={cant === 0}
+                                className="w-6 h-6 rounded-full border border-[#dccdb4] text-[#8a7d6b] flex items-center justify-center disabled:opacity-30 active:bg-[#f0e8d6]"
+                              >
+                                <Minus size={12} />
+                              </button>
+                              <span className={`w-4 text-center text-[14px] font-semibold ${cant > 0 ? "text-[#C1452D]" : "text-[#c7b89a]"}`}>
+                                {cant}
+                              </span>
+                              <button
+                                onClick={() => agregarFondo(i, op)}
+                                className="w-6 h-6 rounded-full bg-[#C1452D] text-white flex items-center justify-center active:bg-[#a93a25]"
+                              >
+                                <Plus size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })}
@@ -320,17 +377,30 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                 Tu pedido
               </div>
               <div className="space-y-1 text-[14px]">
-                {menu.fondos.map((f, i) =>
-                  fondoQty[i] > 0 ? (
-                    <div key={"sf" + i} className="flex justify-between">
-                      <span>
-                        {f.nombre}
-                        {proteinaElegida[i] && <span className="text-[#cfc3ad]"> — {proteinaElegida[i]}</span>}
-                      </span>
-                      <span className="text-[#E0A95C] font-medium ml-3 shrink-0">x{fondoQty[i]}</span>
-                    </div>
-                  ) : null
-                )}
+                {menu.fondos.map((f, i) => {
+                  if (fondoQty[i] === 0) return null;
+                  const opciones = opcionesProteina(i);
+                  if (opciones.length === 0) {
+                    return (
+                      <div key={"sf" + i} className="flex justify-between">
+                        <span>{f.nombre}</span>
+                        <span className="text-[#E0A95C] font-medium ml-3 shrink-0">x{fondoQty[i]}</span>
+                      </div>
+                    );
+                  }
+                  // Una línea por cada proteína distinta que tenga al menos 1 unidad
+                  return opciones
+                    .filter((op) => contarProteina(i, op) > 0)
+                    .map((op) => (
+                      <div key={"sf" + i + op} className="flex justify-between">
+                        <span>
+                          {f.nombre}
+                          <span className="text-[#cfc3ad]"> — {op}</span>
+                        </span>
+                        <span className="text-[#E0A95C] font-medium ml-3 shrink-0">x{contarProteina(i, op)}</span>
+                      </div>
+                    ));
+                })}
                 {menu.entradas.map((e, i) =>
                   entradaQty[i] > 0 ? (
                     <div key={"se" + i} className="flex justify-between text-[#cfc3ad]">
