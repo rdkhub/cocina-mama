@@ -235,6 +235,16 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             <Row label="Pago" value={PAY_LABELS[justSubmitted.pago]} />
             <Row label="Total a pagar" value={`S/ ${justSubmitted.total.toFixed(2)}`} />
           </div>
+
+          {justSubmitted.pago === "yape" && (
+            <div className="bg-[#5C7A4F]/10 border border-[#5C7A4F]/30 rounded-2xl p-4 mb-7 text-left flex items-start gap-2.5">
+              <Wallet size={18} color="#5C7A4F" className="shrink-0 mt-0.5" />
+              <p className="text-[#3a4a32] text-[14px] leading-relaxed">
+                No olvides mandar tu captura del Yape por WhatsApp para confirmar tu pago.
+              </p>
+            </div>
+          )}
+
           <button
             onClick={onReset}
             className="text-[#C1452D] text-sm font-medium underline-offset-4 hover:underline"
@@ -711,7 +721,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
   // Deudas: agrupar por cliente (nombre + telefono) sumando pedidos con pago === fiado y no pagados
   const deudas = {};
   orders.forEach((o) => {
-    if (o.pago === "fiado" && !o.pagado) {
+    if (!o.pagado) {
       const key = `${o.nombre}|${o.telefono}`;
       const montoPedido = typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas, o.modo, o.adicionales);
       if (!deudas[key]) deudas[key] = { nombre: o.nombre, telefono: o.telefono, pedidos: [], cantidad: 0, monto: 0 };
@@ -749,7 +759,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
         }
         grupos[key].pedidos.push(o);
         grupos[key].totalGastado += montoPedido;
-        if (o.pago === "fiado" && !o.pagado) grupos[key].totalDebe += montoPedido;
+        if (!o.pagado) grupos[key].totalDebe += montoPedido;
       });
     return Object.values(grupos).sort((a, b) => b.pedidos.length - a.pedidos.length);
   })();
@@ -990,6 +1000,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                       <span className="text-[#5c5246]">
                         {p.fecha} &middot; {resumen.length > 28 ? resumen.slice(0, 28) + "…" : resumen}
                         <span className="text-[#C1452D] font-medium"> &middot; S/ {montoPedido.toFixed(2)}</span>
+                        <span className="text-[#a89a86]"> &middot; {PAY_LABELS[p.pago]}</span>
                       </span>
                       <button
                         onClick={() => onOrderUpdate(p.id, { pagado: true })}
@@ -1115,7 +1126,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                           .map((p) => {
                             const resumen = p.fondos.map((f) => (f.cantidad > 1 ? `${f.nombre} x${f.cantidad}` : f.nombre)).join(", ");
                             const montoPedido = typeof p.total === "number" ? p.total : calcularTotal(p.fondos, p.entradas, p.modo, p.adicionales);
-                            const pendiente = p.pago === "fiado" && !p.pagado;
+                            const pendiente = !p.pagado;
                             return (
                               <div key={p.id} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2 text-[13px]">
                                 <span className="text-[#5c5246]">
