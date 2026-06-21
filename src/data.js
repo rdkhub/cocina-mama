@@ -93,6 +93,7 @@ function rowToOrder(row) {
     creadoEn: row.creado_en,
     listo: row.listo,
     pagado: row.pagado,
+    total: row.total != null ? Number(row.total) : 0,
   };
 }
 
@@ -112,5 +113,6 @@ function orderToRow(order) {
     creado_en: order.creadoEn,
     listo: order.listo,
     pagado: order.pagado,
+    total: order.total,
   };
 }
