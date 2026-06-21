@@ -14,23 +14,41 @@ export const todayLabel = () => {
 
 export const defaultMenu = () => ({
   fondos: [
-    { nombre: "Arroz con pollo + papa a la huancaína", proteinas: "" },
-    { nombre: "Lomo saltado", proteinas: "" },
+    { nombre: "Arroz con pollo + papa a la huancaína", proteinas: "", permiteArroz: false },
+    { nombre: "Lomo saltado", proteinas: "", permiteArroz: false },
   ],
   entradas: ["Ensalada de tomate", "Ensalada de palta", "Ensalada de fideos"],
+  adicionales: [
+    { nombre: "Huevo", precio: 2 },
+    { nombre: "Plátano frito", precio: 2 },
+    { nombre: "Bistec", precio: 4 },
+    { nombre: "Milanesa", precio: 4 },
+    { nombre: "Pollo a la plancha", precio: 4 },
+  ],
   bebida: "Chicha morada",
   fecha: todayKey(),
 });
 
 // Convierte un fondo guardado en formato viejo (string simple) al formato nuevo
-// { nombre, proteinas }. Si ya viene en el formato nuevo, lo deja igual.
+// { nombre, proteinas, permiteArroz }. Si ya viene en el formato nuevo, lo deja igual.
 function normalizarFondo(f) {
-  if (typeof f === "string") return { nombre: f, proteinas: "" };
-  return { nombre: f?.nombre ?? "", proteinas: f?.proteinas ?? "" };
+  if (typeof f === "string") return { nombre: f, proteinas: "", permiteArroz: false };
+  return {
+    nombre: f?.nombre ?? "",
+    proteinas: f?.proteinas ?? "",
+    permiteArroz: f?.permiteArroz ?? false,
+  };
 }
 
 function normalizarFondos(fondos) {
   return (fondos ?? defaultMenu().fondos).map(normalizarFondo);
+}
+
+// Normaliza adicionales: si no existen aún (menú guardado antes de esta función),
+// usa la lista por defecto en vez de dejarlo vacío.
+function normalizarAdicionales(adicionales) {
+  if (!adicionales || !Array.isArray(adicionales)) return defaultMenu().adicionales;
+  return adicionales.map((a) => ({ nombre: a?.nombre ?? "", precio: Number(a?.precio) || 0 }));
 }
 
 // ---------- MENÚ ----------
@@ -41,6 +59,7 @@ export async function loadMenu() {
   return {
     fondos: normalizarFondos(data.fondos),
     entradas: data.entradas ?? defaultMenu().entradas,
+    adicionales: normalizarAdicionales(data.adicionales),
     bebida: data.bebida ?? defaultMenu().bebida,
     fecha: data.fecha ?? todayKey(),
   };
@@ -51,6 +70,7 @@ export async function saveMenu(menu) {
     id: 1,
     fondos: menu.fondos,
     entradas: menu.entradas,
+    adicionales: menu.adicionales,
     bebida: menu.bebida,
     fecha: menu.fecha ?? todayKey(),
   });
@@ -101,6 +121,7 @@ function rowToOrder(row) {
     telefono: row.telefono,
     fondos: row.fondos ?? [],
     entradas: row.entradas ?? [],
+    adicionales: row.adicionales ?? [],
     bebida: row.bebida ?? null,
     modo: row.modo,
     direccion: row.direccion ?? "",
@@ -121,6 +142,7 @@ function orderToRow(order) {
     telefono: order.telefono,
     fondos: order.fondos,
     entradas: order.entradas,
+    adicionales: order.adicionales,
     bebida: order.bebida,
     modo: order.modo,
     direccion: order.direccion,
