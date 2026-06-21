@@ -471,6 +471,8 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
   const [draft, setDraft] = useState(menu);
   const [savedFlash, setSavedFlash] = useState(false);
   const [fechaHistorial, setFechaHistorial] = useState(todayKey());
+  const [modoHistorial, setModoHistorial] = useState("fecha"); // fecha | cliente
+  const [busquedaCliente, setBusquedaCliente] = useState("");
 
   useEffect(() => setDraft(menu), [menu]);
 
@@ -513,6 +515,30 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
     (acc, o) => acc + (typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas)),
     0
   );
+
+  // Búsqueda por cliente: agrupa TODOS los pedidos (de cualquier fecha) que
+  // coincidan con el nombre o teléfono buscado, sin importar si están pagados o no.
+  const clientesEncontrados = (() => {
+    const termino = busquedaCliente.trim().toLowerCase();
+    if (!termino) return [];
+    const grupos = {};
+    orders
+      .filter(
+        (o) =>
+          o.nombre.toLowerCase().includes(termino) || o.telefono.toLowerCase().includes(termino)
+      )
+      .forEach((o) => {
+        const key = `${o.nombre}|${o.telefono}`;
+        const montoPedido = typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas);
+        if (!grupos[key]) {
+          grupos[key] = { nombre: o.nombre, telefono: o.telefono, pedidos: [], totalGastado: 0, totalDebe: 0 };
+        }
+        grupos[key].pedidos.push(o);
+        grupos[key].totalGastado += montoPedido;
+        if (o.pago === "fiado" && !o.pagado) grupos[key].totalDebe += montoPedido;
+      });
+    return Object.values(grupos).sort((a, b) => b.pedidos.length - a.pedidos.length);
+  })();
 
   return (
     <div className="min-h-screen bg-[#FBF6EC]">
@@ -649,45 +675,135 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
 
         {tab === "historial" && (
           <div className="pb-10">
-            <Field label="Ver pedidos del día">
-              <select
-                className={inputStyle}
-                value={fechaHistorial}
-                onChange={(e) => setFechaHistorial(e.target.value)}
-              >
-                {fechasConPedidos.length === 0 && <option value={todayKey()}>Hoy &middot; {todayLabel()}</option>}
-                {fechasConPedidos.map((f) => (
-                  <option key={f} value={f}>
-                    {f === todayKey() ? `Hoy · ${f}` : f}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <SelectCard
+                active={modoHistorial === "fecha"}
+                onClick={() => setModoHistorial("fecha")}
+                text="Buscar por fecha"
+                compact
+              />
+              <SelectCard
+                active={modoHistorial === "cliente"}
+                onClick={() => setModoHistorial("cliente")}
+                text="Buscar por cliente"
+                compact
+              />
+            </div>
 
-            {ordersDelDia.length > 0 && (
-              <div className="bg-[#2B2622] rounded-2xl p-4 my-4 flex items-center justify-between">
-                <span className="text-[#cfc3ad] text-sm">
-                  Total vendido &middot; {ordersDelDia.length} pedido{ordersDelDia.length > 1 ? "s" : ""}
-                </span>
-                <span className="text-[#E0A95C] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                  S/ {totalDelDia.toFixed(2)}
-                </span>
-              </div>
+            {modoHistorial === "fecha" && (
+              <>
+                <Field label="Ver pedidos del día">
+                  <select
+                    className={inputStyle}
+                    value={fechaHistorial}
+                    onChange={(e) => setFechaHistorial(e.target.value)}
+                  >
+                    {fechasConPedidos.length === 0 && <option value={todayKey()}>Hoy &middot; {todayLabel()}</option>}
+                    {fechasConPedidos.map((f) => (
+                      <option key={f} value={f}>
+                        {f === todayKey() ? `Hoy · ${f}` : f}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                {ordersDelDia.length > 0 && (
+                  <div className="bg-[#2B2622] rounded-2xl p-4 my-4 flex items-center justify-between">
+                    <span className="text-[#cfc3ad] text-sm">
+                      Total vendido &middot; {ordersDelDia.length} pedido{ordersDelDia.length > 1 ? "s" : ""}
+                    </span>
+                    <span className="text-[#E0A95C] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                      S/ {totalDelDia.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  {ordersDelDia.length === 0 && (
+                    <div className="sm:col-span-2">
+                      <EmptyState text="No hay pedidos registrados en esa fecha." />
+                    </div>
+                  )}
+                  {ordersDelDia
+                    .slice()
+                    .reverse()
+                    .map((o) => (
+                      <OrderCard key={o.id} order={o} onUpdate={onOrderUpdate} onDelete={onOrderDelete} />
+                    ))}
+                </div>
+              </>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-              {ordersDelDia.length === 0 && (
-                <div className="sm:col-span-2">
-                  <EmptyState text="No hay pedidos registrados en esa fecha." />
+            {modoHistorial === "cliente" && (
+              <>
+                <Field label="Buscar por nombre o teléfono">
+                  <input
+                    className={inputStyle}
+                    value={busquedaCliente}
+                    onChange={(e) => setBusquedaCliente(e.target.value)}
+                    placeholder="Ej: María, o 999..."
+                  />
+                </Field>
+
+                {busquedaCliente.trim() === "" && (
+                  <div className="mt-4">
+                    <EmptyState text="Escribe un nombre o número de teléfono para ver el historial completo de ese cliente, en todas las fechas." />
+                  </div>
+                )}
+
+                {busquedaCliente.trim() !== "" && clientesEncontrados.length === 0 && (
+                  <div className="mt-4">
+                    <EmptyState text="No se encontró ningún cliente con ese nombre o teléfono." />
+                  </div>
+                )}
+
+                <div className="space-y-4 mt-4">
+                  {clientesEncontrados.map((c) => (
+                    <div key={c.nombre + c.telefono} className="bg-white rounded-2xl border border-[#eee2cb] p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <div className="font-medium text-[#2B2622]">{c.nombre}</div>
+                          <div className="text-[13px] text-[#8a7d6b] flex items-center gap-1">
+                            <Phone size={12} /> {c.telefono}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[#2B2622] font-semibold text-[15px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                            S/ {c.totalGastado.toFixed(2)} <span className="text-[11px] text-[#a89a86] font-normal">en total</span>
+                          </div>
+                          {c.totalDebe > 0 && (
+                            <div className="text-[#C1452D] text-[12px] font-medium mt-0.5">Debe S/ {c.totalDebe.toFixed(2)}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        {c.pedidos
+                          .slice()
+                          .sort((a, b) => b.fecha.localeCompare(a.fecha))
+                          .map((p) => {
+                            const resumen = p.fondos.map((f) => (f.cantidad > 1 ? `${f.nombre} x${f.cantidad}` : f.nombre)).join(", ");
+                            const montoPedido = typeof p.total === "number" ? p.total : calcularTotal(p.fondos, p.entradas);
+                            const pendiente = p.pago === "fiado" && !p.pagado;
+                            return (
+                              <div key={p.id} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2 text-[13px]">
+                                <span className="text-[#5c5246]">
+                                  {p.fecha} &middot; {resumen.length > 24 ? resumen.slice(0, 24) + "…" : resumen}
+                                  <span className="text-[#9C7A3C] font-medium"> &middot; S/ {montoPedido.toFixed(2)}</span>
+                                </span>
+                                {pendiente ? (
+                                  <span className="text-[#C1452D] font-medium whitespace-nowrap ml-2">Debe</span>
+                                ) : (
+                                  <span className="text-[#5C7A4F] font-medium whitespace-nowrap ml-2">Pagado</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-              {ordersDelDia
-                .slice()
-                .reverse()
-                .map((o) => (
-                  <OrderCard key={o.id} order={o} onUpdate={onOrderUpdate} onDelete={onOrderDelete} />
-                ))}
-            </div>
+              </>
+            )}
           </div>
         )}
       </div>
