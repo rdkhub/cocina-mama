@@ -13,11 +13,25 @@ export const todayLabel = () => {
 };
 
 export const defaultMenu = () => ({
-  fondos: ["Arroz con pollo + papa a la huancaína", "Lomo saltado"],
+  fondos: [
+    { nombre: "Arroz con pollo + papa a la huancaína", proteinas: "" },
+    { nombre: "Lomo saltado", proteinas: "" },
+  ],
   entradas: ["Ensalada de tomate", "Ensalada de palta", "Ensalada de fideos"],
   bebida: "Chicha morada",
   fecha: todayKey(),
 });
+
+// Convierte un fondo guardado en formato viejo (string simple) al formato nuevo
+// { nombre, proteinas }. Si ya viene en el formato nuevo, lo deja igual.
+function normalizarFondo(f) {
+  if (typeof f === "string") return { nombre: f, proteinas: "" };
+  return { nombre: f?.nombre ?? "", proteinas: f?.proteinas ?? "" };
+}
+
+function normalizarFondos(fondos) {
+  return (fondos ?? defaultMenu().fondos).map(normalizarFondo);
+}
 
 // ---------- MENÚ ----------
 // Hay una sola fila en la tabla "menu" con id = 1, que siempre se actualiza (upsert).
@@ -25,7 +39,7 @@ export async function loadMenu() {
   const { data, error } = await supabase.from("menu").select("*").eq("id", 1).maybeSingle();
   if (error || !data) return defaultMenu();
   return {
-    fondos: data.fondos ?? defaultMenu().fondos,
+    fondos: normalizarFondos(data.fondos),
     entradas: data.entradas ?? defaultMenu().entradas,
     bebida: data.bebida ?? defaultMenu().bebida,
     fecha: data.fecha ?? todayKey(),
@@ -77,6 +91,9 @@ export async function deleteOrder(id) {
 }
 
 // Convierte una fila de la tabla "orders" (snake_case) al formato que usa la app (camelCase)
+// Nota: cada item de "fondos" puede incluir { nombre, cantidad, proteina } cuando el cliente
+// elige una proteína específica para ese plato. Como "fondos" es una columna jsonb, no se
+// necesita ningún cambio en la base de datos para soportar este campo nuevo.
 function rowToOrder(row) {
   return {
     id: row.id,
