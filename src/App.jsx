@@ -76,9 +76,9 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
 
   const handleSubmit = () => {
     if (!nombre.trim()) return setError("Falta tu nombre.");
-    if (!telefono.trim()) return setError("Falta tu n\u00famero de tel\u00e9fono.");
+    if (!telefono.trim()) return setError("Falta tu número de teléfono.");
     if (totalFondos === 0) return setError("Elige al menos un plato de fondo.");
-    if (modo === "delivery" && !direccion.trim()) return setError("Falta la direcci\u00f3n de entrega.");
+    if (modo === "delivery" && !direccion.trim()) return setError("Falta la dirección de entrega.");
     setError("");
 
     const fondos = menu.fondos
@@ -151,7 +151,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
         <div className="relative max-w-md mx-auto">
           <div className="flex items-center gap-2 mb-5">
             <ChefHat size={20} strokeWidth={1.75} color="#E0A95C" />
-            <span className="font-display text-lg tracking-wide">Cocina de Mam\u00e1</span>
+            <span className="font-display text-lg tracking-wide">Cocina de Mamá</span>
           </div>
           <div
             style={{
@@ -161,7 +161,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             }}
             className="text-[#E0A95C] uppercase mb-1"
           >
-            Men\u00fa de hoy &middot; {todayLabel()}
+            Menú de hoy &middot; {todayLabel()}
           </div>
           <h1 className="font-display text-[2rem] leading-[1.1] mb-1">{menu.fondos[0]}</h1>
           <p className="text-[#cfc3ad] text-[15px]">o {menu.fondos[1]}</p>
@@ -195,7 +195,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             </div>
           </Field>
 
-          <Field label={`Bebida del d\u00eda: ${menu.bebida}`}>
+          <Field label={`Bebida del día: ${menu.bebida}`}>
             <QtyCard text={menu.bebida} qty={bebidaQty} onChange={(d) => setBebidaQty(Math.max(0, bebidaQty + d))} />
           </Field>
 
@@ -207,12 +207,12 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
           </Field>
 
           {modo === "delivery" && (
-            <Field label="Direcci\u00f3n de entrega">
+            <Field label="Dirección de entrega">
               <input className={inputStyle} value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Jr. Las Flores 123, dpto 4" />
             </Field>
           )}
 
-          <Field label="¿C\u00f3mo vas a pagar?">
+          <Field label="¿Cómo vas a pagar?">
             <div className="grid grid-cols-3 gap-2">
               {Object.entries(PAY_LABELS).map(([key, label]) => (
                 <SelectCard key={key} active={pago === key} onClick={() => setPago(key)} text={label} compact />
@@ -277,7 +277,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             className="w-full bg-[#C1452D] hover:bg-[#a93a25] disabled:opacity-60 text-white font-medium rounded-xl py-3.5 text-[15px] transition flex items-center justify-center gap-2"
           >
             {submitting ? <Loader2 size={18} className="animate-spin" /> : null}
-            {submitting ? "Enviando pedido\u2026" : "Enviar mi pedido"}
+            {submitting ? "Enviando pedido…" : "Enviar mi pedido"}
           </button>
         </div>
       </div>
@@ -294,8 +294,8 @@ function Row({ label, value }) {
   );
 }
 
-// Tarjeta de cantidad: botones - y + para elegir cu\u00e1ntas unidades de un plato.
-// Cuando qty > 0, queda resaltada en BLANCO con borde rojo (no gris) para que se note claro que est\u00e1 elegida.
+// Tarjeta de cantidad: botones - y + para elegir cuántas unidades de un plato.
+// Cuando qty > 0, queda resaltada en BLANCO con borde rojo (no gris) para que se note claro que está elegida.
 function QtyCard({ text, qty, onChange }) {
   const active = qty > 0;
   return (
@@ -351,7 +351,7 @@ function SelectCard({ active, onClick, text, compact, icon }) {
 // =====================================================================
 // PIN LOCK
 // =====================================================================
-const ADMIN_PIN = "1234"; // c\u00e1mbialo aqu\u00ed por el PIN que quieras usar en el local
+const ADMIN_PIN = "1234"; // cámbialo aquí por el PIN que quieras usar en el local
 
 function PinScreen({ onUnlock, onBack }) {
   const [pin, setPin] = useState("");
@@ -377,7 +377,7 @@ function PinScreen({ onUnlock, onBack }) {
     <div className="min-h-screen bg-[#2B2622] flex items-center justify-center px-5">
       <div className="max-w-xs w-full text-center">
         <Lock size={28} color="#E0A95C" className="mx-auto mb-4" />
-        <h2 className="font-display text-xl text-[#FBF6EC] mb-1">Panel de mam\u00e1</h2>
+        <h2 className="font-display text-xl text-[#FBF6EC] mb-1">Panel de mamá</h2>
         <p className="text-[#9c9082] text-sm mb-7">Ingresa el PIN para entrar</p>
 
         <div className={`flex justify-center gap-3 mb-8 ${error ? "animate-pulse" : ""}`}>
@@ -419,7 +419,7 @@ function PinScreen({ onUnlock, onBack }) {
         </div>
 
         <button onClick={onBack} className="text-[#9c9082] text-sm hover:text-[#FBF6EC] inline-flex items-center gap-1.5">
-          <ArrowLeft size={14} /> Volver al men\u00fa de clientes
+          <ArrowLeft size={14} /> Volver al menú de clientes
         </button>
       </div>
     </div>
@@ -471,7 +471,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
           </button>
           <div className="flex items-center gap-2">
             <Lock size={15} color="#E0A95C" />
-            <span className="text-sm text-[#E0A95C]">Panel de mam\u00e1</span>
+            <span className="text-sm text-[#E0A95C]">Panel de mamá</span>
           </div>
         </div>
       </div>
@@ -480,7 +480,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
         <div className="flex gap-1 -mt-px bg-white rounded-xl border border-[#eee2cb] p-1 mt-4 mb-5">
           {[
             { id: "pedidos", label: `Pedidos de hoy (${todaysOrders.length})` },
-            { id: "menu", label: "Editar men\u00fa" },
+            { id: "menu", label: "Editar menú" },
             { id: "deudas", label: `Deben (${deudaList.length})` },
           ].map((t) => (
             <button
@@ -499,7 +499,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-10">
             {todaysOrders.length === 0 && (
               <div className="sm:col-span-2">
-                <EmptyState text="A\u00fan no han llegado pedidos hoy. En cuanto alguien pida desde la p\u00e1gina, aparece aqu\u00ed al instante." />
+                <EmptyState text="Aún no han llegado pedidos hoy. En cuanto alguien pida desde la página, aparece aquí al instante." />
               </div>
             )}
             {todaysOrders
@@ -528,17 +528,17 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
             <Field label="Entrada 3">
               <input className={inputStyle} value={draft.entradas[2]} onChange={(e) => updateList("entradas", 2, e.target.value)} />
             </Field>
-            <Field label="Bebida del d\u00eda">
+            <Field label="Bebida del día">
               <input className={inputStyle} value={draft.bebida} onChange={(e) => setDraft({ ...draft, bebida: e.target.value })} />
             </Field>
             <button
               onClick={saveMenuDraft}
               className="w-full bg-[#5C7A4F] hover:bg-[#4d6841] text-white font-medium rounded-xl py-3.5 text-[15px] transition"
             >
-              {savedFlash ? "\u2713 Men\u00fa actualizado" : "Guardar men\u00fa de hoy"}
+              {savedFlash ? "✓ Menú actualizado" : "Guardar menú de hoy"}
             </button>
             <p className="text-[#8a7d6b] text-[13px] text-center">
-              En cuanto guardas, todos los que abran la p\u00e1gina ven este men\u00fa al instante. No hace falta volver a mandar nada por WhatsApp.
+              En cuanto guardas, todos los que abran la página ven este menú al instante. No hace falta volver a mandar nada por WhatsApp.
             </p>
           </div>
         )}
@@ -563,7 +563,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                     return (
                     <div key={p.id} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2 text-[13px]">
                       <span className="text-[#5c5246]">
-                        {p.fecha} &middot; {resumen.length > 28 ? resumen.slice(0, 28) + "\u2026" : resumen}
+                        {p.fecha} &middot; {resumen.length > 28 ? resumen.slice(0, 28) + "…" : resumen}
                       </span>
                       <button
                         onClick={() => onOrderUpdate(p.id, { pagado: true })}
@@ -647,7 +647,7 @@ function OrderCard({ order, onUpdate, onDelete }) {
           className={`text-[13px] font-medium flex items-center gap-1.5 ${order.pagado ? "text-[#5C7A4F]" : "text-[#C1452D]"}`}
         >
           <Wallet size={15} />
-          {order.pagado ? "Pagado" : "Debe \u2014 marcar pagado"}
+          {order.pagado ? "Pagado" : "Debe — marcar pagado"}
         </button>
       </div>
     </div>
@@ -755,7 +755,7 @@ export default function App() {
           <button
             onClick={() => setView("pin")}
             className="fixed bottom-4 right-4 bg-[#2B2622] text-[#E0A95C] rounded-full p-3 shadow-lg opacity-70 hover:opacity-100"
-            title="Panel de administraci\u00f3n"
+            title="Panel de administración"
           >
             <Lock size={18} />
           </button>
