@@ -1458,7 +1458,7 @@ export default function App() {
         fecha: todayKey(),
         creadoEn: new Date().toISOString(),
         listo: false,
-        pagado: data.pago !== "fiado",
+        pagado: false,
       };
       const saved = await createOrder(order);
       setOrders((prev) => [...prev, saved]);
