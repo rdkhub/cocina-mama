@@ -764,6 +764,51 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
     return Object.values(grupos).sort((a, b) => b.pedidos.length - a.pedidos.length);
   })();
 
+  // Resumen semanal: últimos 7 días (incluyendo hoy), de lunes a domingo si es posible,
+  // pero simplemente toma los 7 días corridos más recientes para no depender de en qué
+  // día de la semana se esté revisando.
+  const resumenSemanal = (() => {
+    const hoy = new Date();
+    const dias = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(hoy);
+      d.setDate(hoy.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const nombresDia = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+      dias.push({ fecha: key, etiqueta: nombresDia[d.getDay()], total: 0, pedidos: 0 });
+    }
+    const fechasSemana = new Set(dias.map((d) => d.fecha));
+    const ordersSemana = orders.filter((o) => fechasSemana.has(o.fecha));
+
+    let totalSemana = 0;
+    let totalDeudaSemana = 0;
+    const conteoPlatos = {};
+
+    ordersSemana.forEach((o) => {
+      const monto = typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas, o.modo, o.adicionales);
+      const diaDelPedido = dias.find((d) => d.fecha === o.fecha);
+      if (diaDelPedido) {
+        diaDelPedido.total += monto;
+        diaDelPedido.pedidos += 1;
+      }
+      totalSemana += monto;
+      if (!o.pagado) totalDeudaSemana += monto;
+
+      (o.fondos || []).forEach((f) => {
+        conteoPlatos[f.nombre] = (conteoPlatos[f.nombre] || 0) + (f.cantidad || 0);
+      });
+    });
+
+    const platosTop = Object.entries(conteoPlatos)
+      .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 5);
+
+    const maxDia = Math.max(1, ...dias.map((d) => d.total));
+
+    return { dias, totalSemana, totalDeudaSemana, platosTop, totalPedidos: ordersSemana.length, maxDia };
+  })();
+
   return (
     <div className="min-h-screen bg-[#FBF6EC]">
       <div className="bg-[#2B2622] text-[#FBF6EC] px-5 pt-6 pb-5">
@@ -785,6 +830,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
             { id: "menu", label: "Menú" },
             { id: "deudas", label: `Deben (${deudaList.length})` },
             { id: "historial", label: "Historial" },
+            { id: "semanal", label: "Semanal" },
           ].map((t) => (
             <button
               key={t.id}
@@ -1147,6 +1193,83 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {tab === "semanal" && (
+          <div className="pb-10">
+            <p className="text-[#8a7d6b] text-[13px] mb-4">
+              Resumen de los últimos 7 días &middot; útil para revisar cada sábado cómo fue la semana.
+            </p>
+
+            {/* Totales generales */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="bg-[#2B2622] rounded-2xl p-4">
+                <div className="text-[#cfc3ad] text-[12px] mb-1">Vendido esta semana</div>
+                <div className="text-[#E0A95C] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                  S/ {resumenSemanal.totalSemana.toFixed(2)}
+                </div>
+                <div className="text-[#9c9082] text-[11px] mt-1">{resumenSemanal.totalPedidos} pedidos</div>
+              </div>
+              <div className="bg-white border border-[#eee2cb] rounded-2xl p-4">
+                <div className="text-[#8a7d6b] text-[12px] mb-1">Deuda acumulada</div>
+                <div className="text-[#C1452D] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                  S/ {resumenSemanal.totalDeudaSemana.toFixed(2)}
+                </div>
+                <div className="text-[#a89a86] text-[11px] mt-1">de esta semana</div>
+              </div>
+            </div>
+
+            {/* Gráfico de barras: ventas por día */}
+            <div className="bg-white border border-[#eee2cb] rounded-2xl p-4 mb-5">
+              <div className="text-[#2B2622] text-[14px] font-medium mb-4">Ventas por día</div>
+              <div className="flex items-end justify-between gap-2 h-36">
+                {resumenSemanal.dias.map((d) => {
+                  const alturaPct = Math.max(4, (d.total / resumenSemanal.maxDia) * 100);
+                  const esHoy = d.fecha === todayKey();
+                  return (
+                    <div key={d.fecha} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                      <span className="text-[11px] text-[#8a7d6b]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                        {d.total > 0 ? d.total.toFixed(0) : ""}
+                      </span>
+                      <div
+                        className={`w-full rounded-md transition-all ${esHoy ? "bg-[#C1452D]" : "bg-[#E0A95C]"}`}
+                        style={{ height: `${alturaPct}%`, minHeight: "4px" }}
+                        title={`${d.etiqueta}: S/ ${d.total.toFixed(2)}`}
+                      />
+                      <span className={`text-[11px] ${esHoy ? "text-[#C1452D] font-semibold" : "text-[#8a7d6b]"}`}>{d.etiqueta}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Platos más pedidos */}
+            <div className="bg-white border border-[#eee2cb] rounded-2xl p-4">
+              <div className="text-[#2B2622] text-[14px] font-medium mb-3">Platos más pedidos</div>
+              {resumenSemanal.platosTop.length === 0 && (
+                <p className="text-[#a89a86] text-[13px]">Todavía no hay pedidos esta semana.</p>
+              )}
+              <div className="space-y-2.5">
+                {resumenSemanal.platosTop.map((p, idx) => {
+                  const maxCant = resumenSemanal.platosTop[0]?.cantidad || 1;
+                  const anchoPct = Math.max(8, (p.cantidad / maxCant) * 100);
+                  return (
+                    <div key={p.nombre}>
+                      <div className="flex justify-between text-[13px] mb-1">
+                        <span className="text-[#3a332b]">
+                          {idx + 1}. {p.nombre}
+                        </span>
+                        <span className="text-[#9C7A3C] font-medium">x{p.cantidad}</span>
+                      </div>
+                      <div className="h-1.5 bg-[#FBF6EC] rounded-full overflow-hidden">
+                        <div className="h-full bg-[#5C7A4F] rounded-full" style={{ width: `${anchoPct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </div>
