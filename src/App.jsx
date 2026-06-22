@@ -694,6 +694,13 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
 
   useEffect(() => setDraft(menu), [menu]);
 
+  // Un pedido se considera "de prueba" si su nombre contiene la palabra PRUEBA
+  // (sin importar mayúsculas/minúsculas). Estos pedidos siguen viéndose en
+  // "Pedidos de hoy" para poder gestionarlos, pero NO cuentan en Deudas,
+  // Historial ni en el Resumen semanal, para no inflar las estadísticas reales.
+  const esPrueba = (o) => o.nombre.toLowerCase().includes("prueba");
+  const ordersReales = orders.filter((o) => !esPrueba(o));
+
   const todaysOrders = orders.filter((o) => o.fecha === todayKey());
   const totalVendidoHoy = todaysOrders.reduce(
     (acc, o) => acc + (typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas, o.modo, o.adicionales)),
@@ -720,7 +727,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
 
   // Deudas: agrupar por cliente (nombre + telefono) sumando pedidos con pago === fiado y no pagados
   const deudas = {};
-  orders.forEach((o) => {
+  ordersReales.forEach((o) => {
     if (!o.pagado) {
       const key = `${o.nombre}|${o.telefono}`;
       const montoPedido = typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas, o.modo, o.adicionales);
@@ -733,8 +740,8 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
   const deudaList = Object.values(deudas).sort((a, b) => b.monto - a.monto);
 
   // Historial: lista de fechas distintas con pedidos, más recientes primero
-  const fechasConPedidos = Array.from(new Set(orders.map((o) => o.fecha))).sort((a, b) => b.localeCompare(a));
-  const ordersDelDia = orders.filter((o) => o.fecha === fechaHistorial);
+  const fechasConPedidos = Array.from(new Set(ordersReales.map((o) => o.fecha))).sort((a, b) => b.localeCompare(a));
+  const ordersDelDia = ordersReales.filter((o) => o.fecha === fechaHistorial);
   const totalDelDia = ordersDelDia.reduce(
     (acc, o) => acc + (typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas, o.modo, o.adicionales)),
     0
@@ -746,7 +753,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
     const termino = busquedaCliente.trim().toLowerCase();
     if (!termino) return [];
     const grupos = {};
-    orders
+    ordersReales
       .filter(
         (o) =>
           o.nombre.toLowerCase().includes(termino) || o.telefono.toLowerCase().includes(termino)
@@ -778,11 +785,12 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
       dias.push({ fecha: key, etiqueta: nombresDia[d.getDay()], total: 0, pedidos: 0 });
     }
     const fechasSemana = new Set(dias.map((d) => d.fecha));
-    const ordersSemana = orders.filter((o) => fechasSemana.has(o.fecha));
+    const ordersSemana = ordersReales.filter((o) => fechasSemana.has(o.fecha));
 
     let totalSemana = 0;
     let totalDeudaSemana = 0;
     const conteoPlatos = {};
+    const deudoresSemana = {};
 
     ordersSemana.forEach((o) => {
       const monto = typeof o.total === "number" ? o.total : calcularTotal(o.fondos, o.entradas, o.modo, o.adicionales);
@@ -792,12 +800,20 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
         diaDelPedido.pedidos += 1;
       }
       totalSemana += monto;
-      if (!o.pagado) totalDeudaSemana += monto;
+      if (!o.pagado) {
+        totalDeudaSemana += monto;
+        const key = `${o.nombre}|${o.telefono}`;
+        if (!deudoresSemana[key]) deudoresSemana[key] = { nombre: o.nombre, telefono: o.telefono, monto: 0, pedidos: 0 };
+        deudoresSemana[key].monto += monto;
+        deudoresSemana[key].pedidos += 1;
+      }
 
       (o.fondos || []).forEach((f) => {
         conteoPlatos[f.nombre] = (conteoPlatos[f.nombre] || 0) + (f.cantidad || 0);
       });
     });
+
+    const listaDeudores = Object.values(deudoresSemana).sort((a, b) => b.monto - a.monto);
 
     const platosTop = Object.entries(conteoPlatos)
       .map(([nombre, cantidad]) => ({ nombre, cantidad }))
@@ -806,7 +822,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
 
     const maxDia = Math.max(1, ...dias.map((d) => d.total));
 
-    return { dias, totalSemana, totalDeudaSemana, platosTop, totalPedidos: ordersSemana.length, maxDia };
+    return { dias, totalSemana, totalDeudaSemana, platosTop, listaDeudores, totalPedidos: ordersSemana.length, maxDia };
   })();
 
   return (
@@ -1220,6 +1236,28 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
               </div>
             </div>
 
+            {/* Detalle de quién debe esta semana */}
+            {resumenSemanal.listaDeudores.length > 0 && (
+              <div className="bg-white border border-[#eee2cb] rounded-2xl p-4 mb-5">
+                <div className="text-[#2B2622] text-[14px] font-medium mb-3">Quién debe esta semana</div>
+                <div className="space-y-2">
+                  {resumenSemanal.listaDeudores.map((d) => (
+                    <div key={d.nombre + d.telefono} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2">
+                      <div>
+                        <div className="text-[13px] text-[#2B2622] font-medium">{d.nombre}</div>
+                        <div className="text-[11px] text-[#a89a86]">
+                          {d.telefono} &middot; {d.pedidos} pedido{d.pedidos > 1 ? "s" : ""}
+                        </div>
+                      </div>
+                      <div className="text-[#C1452D] font-semibold text-[14px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                        S/ {d.monto.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Gráfico de barras: ventas por día */}
             <div className="bg-white border border-[#eee2cb] rounded-2xl p-4 mb-5">
               <div className="text-[#2B2622] text-[14px] font-medium mb-4">Ventas por día</div>
@@ -1291,7 +1329,14 @@ function OrderCard({ order, onUpdate, onDelete }) {
     <div className="bg-white rounded-2xl border border-[#eee2cb] p-4">
       <div className="flex items-start justify-between mb-2.5">
         <div>
-          <div className="font-medium text-[#2B2622]">{order.nombre}</div>
+          <div className="font-medium text-[#2B2622] flex items-center gap-1.5">
+            {order.nombre}
+            {order.nombre.toLowerCase().includes("prueba") && (
+              <span className="text-[10px] uppercase font-normal text-[#9C7A3C] border border-[#9C7A3C]/40 rounded-full px-1.5 py-0.5">
+                Prueba
+              </span>
+            )}
+          </div>
           <div className="text-[13px] text-[#8a7d6b] flex items-center gap-1">
             <Phone size={12} /> {order.telefono}
             <Clock size={12} className="ml-1.5" />{" "}
