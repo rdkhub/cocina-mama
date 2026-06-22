@@ -1471,9 +1471,15 @@ export default function App() {
     }
   };
 
-  const handleMenuSave = async (newMenu) => {
+const handleMenuSave = async (newMenu) => {
+  try {
     await saveMenu(newMenu);
     setMenu(newMenu);
+  } catch (e) {
+    console.error("Error guardando menú:", e);
+    alert("Error al guardar el menú: " + e.message);
+  }
+};
   };
 
   const handleOrderUpdate = async (id, patch) => {
