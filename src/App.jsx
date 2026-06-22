@@ -1480,7 +1480,6 @@ const handleMenuSave = async (newMenu) => {
     alert("Error al guardar el menú: " + e.message);
   }
 };
-  };
 
   const handleOrderUpdate = async (id, patch) => {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
