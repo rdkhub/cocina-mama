@@ -92,7 +92,6 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
   const [arrozElegido, setArrozElegido] = useState(menu.fondos.map((f) => (f.permiteArroz ? "con" : null)));
   const [entradaQty, setEntradaQty] = useState(menu.entradas.map(() => 0));
   const [adicionalQty, setAdicionalQty] = useState((menu.adicionales || []).map(() => 0));
-  const [bebidaQty, setBebidaQty] = useState(0);
   const [modo, setModo] = useState("recojo"); // recojo | delivery
   const [direccion, setDireccion] = useState("");
   const [pago, setPago] = useState("fiado"); // yape | efectivo | fiado
@@ -102,6 +101,8 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
   const fondoQty = fondoSeleccion.map((arr) => arr.length);
   const totalFondos = fondoQty.reduce((a, b) => a + b, 0);
   const totalEntradas = entradaQty.reduce((a, b) => a + b, 0);
+  const precioFondoUnidad = modo === "delivery" ? PRECIO_FONDO_DELIVERY : PRECIO_FONDO_RECOJO;
+  const entradasExtra = Math.max(0, totalEntradas - totalFondos);
   const totalPagar = calcularTotal(
     menu.fondos.map((_, i) => ({ cantidad: fondoQty[i] })),
     menu.entradas.map((_, i) => ({ cantidad: entradaQty[i] })),
@@ -150,7 +151,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
     if (!nombre.trim()) return setError("Falta tu nombre.");
     if (!telefono.trim()) return setError("Falta tu número de teléfono.");
     const totalAdicionales = adicionalQty.reduce((a, b) => a + b, 0);
-    if (totalFondos === 0 && totalEntradas === 0 && bebidaQty === 0 && totalAdicionales === 0) {
+    if (totalFondos === 0 && totalEntradas === 0 && totalAdicionales === 0) {
       return setError("Elige al menos un plato, entrada, bebida o adicional.");
     }
     if (modo === "delivery" && !direccion.trim()) return setError("Falta la dirección de entrega.");
@@ -191,7 +192,6 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
       fondos,
       entradas,
       adicionales,
-      bebida: bebidaQty > 0 ? { nombre: menu.bebida, cantidad: bebidaQty } : null,
       modo,
       direccion: modo === "delivery" ? direccion.trim() : "",
       pago,
@@ -229,9 +229,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             {(justSubmitted.adicionales || []).map((a, i) => (
               <Row key={"a" + i} label={a.cantidad > 1 ? `Adicional (x${a.cantidad})` : "Adicional"} value={a.nombre} />
             ))}
-            {justSubmitted.bebida && (
-              <Row label={justSubmitted.bebida.cantidad > 1 ? `Bebida (x${justSubmitted.bebida.cantidad})` : "Bebida"} value={justSubmitted.bebida.nombre} />
-            )}
+            <Row label="Refresco" value={`${menu.bebida} (incluido)`} />
             <Row label="Pago" value={PAY_LABELS[justSubmitted.pago]} />
             <Row label="Total a pagar" value={`S/ ${justSubmitted.total.toFixed(2)}`} />
           </div>
@@ -284,14 +282,14 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             Menú de hoy &middot; {todayLabel()}
           </div>
           <h1 className="font-display text-[2rem] leading-[1.1] mb-1">{menu.fondos[0]?.nombre}</h1>
-          <p className="text-[#cfc3ad] text-[15px]">o {menu.fondos[1]?.nombre}</p>
+          <p className="text-[#cfc3ad] text-[15px] mb-2">o {menu.fondos[1]?.nombre}</p>
+          <p className="text-[#E0A95C] text-[14px]">+ Refresco: {menu.bebida}</p>
         </div>
       </div>
 
       <div className="max-w-md mx-auto px-5 -mt-7 relative z-10">
         <div className="bg-white rounded-2xl shadow-[0_8px_24px_rgba(43,38,34,0.08)] border border-[#eee2cb] p-5 mb-7">
           <div className="flex gap-2 flex-wrap">
-            <Tag color="#9C7A3C">Bebida: {menu.bebida}</Tag>
             <Tag color="#5C7A4F">Puedes pedir varios platos y cantidades</Tag>
           </div>
         </div>
@@ -419,10 +417,6 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             </Field>
           )}
 
-          <Field label={`Bebida del día: ${menu.bebida}`}>
-            <QtyCard text={menu.bebida} qty={bebidaQty} onChange={(d) => setBebidaQty(Math.max(0, bebidaQty + d))} />
-          </Field>
-
           <Field label="Recojo o delivery">
             <div className="grid grid-cols-2 gap-2">
               <SelectCard active={modo === "recojo"} onClick={() => setModo("recojo")} text="Recojo en local" compact icon={<Store size={15} />} />
@@ -456,59 +450,86 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             <input className={inputStyle} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Sin cebolla, poca sal, etc." />
           </Field>
 
-          {(totalFondos > 0 || totalEntradas > 0 || bebidaQty > 0 || adicionalQty.some((q) => q > 0)) && (
+          {(totalFondos > 0 || totalEntradas > 0 || adicionalQty.some((q) => q > 0)) && (
             <div className="bg-[#2B2622] rounded-2xl p-4 text-[#FBF6EC]">
               <div className="text-[#E0A95C] text-xs uppercase tracking-wide mb-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                 Tu pedido
               </div>
-              <div className="space-y-1 text-[14px]">
+              <div className="space-y-1.5 text-[14px]">
+                {/* Cada fondo cuesta lo mismo tenga o no entrada (S/12 recojo, S/13 delivery).
+                    Por eso cada unidad de fondo se muestra como un paquete completo a precio fijo. */}
                 {menu.fondos.map((f, i) => {
                   if (fondoQty[i] === 0) return null;
                   const opciones = opcionesProteina(i);
                   const arrozTexto = f.permiteArroz ? (arrozElegido[i] === "con" ? " (con arroz)" : " (sin arroz)") : "";
                   if (opciones.length === 0) {
+                    const cant = fondoQty[i];
+                    const subtotal = cant * precioFondoUnidad;
                     return (
-                      <div key={"sf" + i} className="flex justify-between">
-                        <span>{f.nombre}{arrozTexto}</span>
-                        <span className="text-[#E0A95C] font-medium ml-3 shrink-0">x{fondoQty[i]}</span>
+                      <div key={"sf" + i} className="flex justify-between items-baseline">
+                        <span>
+                          {f.nombre}{arrozTexto}
+                          <span className="text-[#9c9082]"> &middot; {cant} x S/{precioFondoUnidad}</span>
+                        </span>
+                        <span className="text-[#E0A95C] font-medium ml-3 shrink-0">S/ {subtotal.toFixed(2)}</span>
                       </div>
                     );
                   }
                   // Una línea por cada proteína distinta que tenga al menos 1 unidad
                   return opciones
                     .filter((op) => contarProteina(i, op) > 0)
-                    .map((op) => (
-                      <div key={"sf" + i + op} className="flex justify-between">
-                        <span>
-                          {f.nombre}
-                          <span className="text-[#cfc3ad]"> — {op}{arrozTexto}</span>
-                        </span>
-                        <span className="text-[#E0A95C] font-medium ml-3 shrink-0">x{contarProteina(i, op)}</span>
-                      </div>
-                    ));
+                    .map((op) => {
+                      const cant = contarProteina(i, op);
+                      const subtotal = cant * precioFondoUnidad;
+                      return (
+                        <div key={"sf" + i + op} className="flex justify-between items-baseline">
+                          <span>
+                            {f.nombre}
+                            <span className="text-[#cfc3ad]"> — {op}{arrozTexto}</span>
+                            <span className="text-[#9c9082]"> &middot; {cant} x S/{precioFondoUnidad}</span>
+                          </span>
+                          <span className="text-[#E0A95C] font-medium ml-3 shrink-0">S/ {subtotal.toFixed(2)}</span>
+                        </div>
+                      );
+                    });
                 })}
-                {menu.entradas.map((e, i) =>
-                  entradaQty[i] > 0 ? (
-                    <div key={"se" + i} className="flex justify-between text-[#cfc3ad]">
-                      <span>{e}</span>
-                      <span className="text-[#E0A95C] font-medium ml-3 shrink-0">x{entradaQty[i]}</span>
-                    </div>
-                  ) : null
-                )}
-                {(menu.adicionales || []).map((a, i) =>
-                  adicionalQty[i] > 0 ? (
-                    <div key={"sa" + i} className="flex justify-between text-[#cfc3ad]">
-                      <span>{a.nombre}</span>
-                      <span className="text-[#E0A95C] font-medium ml-3 shrink-0">x{adicionalQty[i]}</span>
-                    </div>
-                  ) : null
-                )}
-                {bebidaQty > 0 && (
-                  <div className="flex justify-between text-[#cfc3ad]">
-                    <span>{menu.bebida}</span>
-                    <span className="text-[#E0A95C] font-medium ml-3 shrink-0">x{bebidaQty}</span>
+
+                {/* Entradas: van incluidas en el precio del fondo (no se cobran aparte) si hay
+                    suficientes fondos pedidos. Solo las que sobran cuestan S/3 cada una. */}
+                {totalEntradas > 0 && (
+                  <div className="flex justify-between items-baseline text-[#cfc3ad]">
+                    <span>
+                      Entradas elegidas
+                      <span className="text-[#9c9082]"> &middot; x{totalEntradas}</span>
+                    </span>
+                    <span className="text-[#E0A95C] font-medium ml-3 shrink-0">
+                      {entradasExtra > 0 ? `S/ ${(entradasExtra * 3).toFixed(2)}` : "Incluidas"}
+                    </span>
                   </div>
                 )}
+                {entradasExtra > 0 && (
+                  <div className="text-[11px] text-[#9c9082] -mt-1">
+                    {totalFondos} entrada{totalFondos !== 1 ? "s" : ""} incluida{totalFondos !== 1 ? "s" : ""} con tu{totalFondos !== 1 ? "s" : ""} plato{totalFondos !== 1 ? "s" : ""}, {entradasExtra} adicional{entradasExtra !== 1 ? "es" : ""} a S/3 c/u
+                  </div>
+                )}
+
+                {(menu.adicionales || []).map((a, i) => {
+                  if (adicionalQty[i] === 0) return null;
+                  const subtotal = adicionalQty[i] * a.precio;
+                  return (
+                    <div key={"sa" + i} className="flex justify-between items-baseline text-[#cfc3ad]">
+                      <span>
+                        {a.nombre}
+                        <span className="text-[#9c9082]"> &middot; {adicionalQty[i]} x S/{a.precio}</span>
+                      </span>
+                      <span className="text-[#E0A95C] font-medium ml-3 shrink-0">S/ {subtotal.toFixed(2)}</span>
+                    </div>
+                  );
+                })}
+                <div className="flex justify-between items-baseline text-[#cfc3ad]">
+                  <span>Refresco: {menu.bebida}</span>
+                  <span className="text-[#E0A95C] font-medium ml-3 shrink-0">Incluido</span>
+                </div>
               </div>
               <div className="flex justify-between items-center mt-3 pt-3 border-t border-[#463f33]">
                 <span className="text-[15px] font-medium">Total a pagar</span>
@@ -1021,8 +1042,8 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
               </button>
             </Field>
 
-            <Field label="Bebida del día">
-              <input className={inputStyle} value={draft.bebida} onChange={(e) => setDraft({ ...draft, bebida: e.target.value })} />
+            <Field label="Refresco del día (gratis, incluido en todo pedido)">
+              <input className={inputStyle} value={draft.bebida} onChange={(e) => setDraft({ ...draft, bebida: e.target.value })} placeholder="Ej: Chicha morada" />
             </Field>
             <button
               onClick={saveMenuDraft}
@@ -1458,7 +1479,7 @@ export default function App() {
         fecha: todayKey(),
         creadoEn: new Date().toISOString(),
         listo: false,
-        pagado: false,
+        pagado: data.pago !== "fiado",
       };
       const saved = await createOrder(order);
       setOrders((prev) => [...prev, saved]);
@@ -1471,15 +1492,10 @@ export default function App() {
     }
   };
 
-const handleMenuSave = async (newMenu) => {
-  try {
+  const handleMenuSave = async (newMenu) => {
     await saveMenu(newMenu);
     setMenu(newMenu);
-  } catch (e) {
-    console.error("Error guardando menú:", e);
-    alert("Error al guardar el menú: " + e.message);
-  }
-};
+  };
 
   const handleOrderUpdate = async (id, patch) => {
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
