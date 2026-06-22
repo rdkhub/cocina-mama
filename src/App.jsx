@@ -29,13 +29,21 @@ function sumarCantidades(items) {
 }
 
 // Calcula el total a pagar: cada fondo (solo, o emparejado con una entrada)
-// cuesta S/12 en recojo o S/13 en delivery. Las entradas que sobren sin fondo
-// que las acompañe cuestan S/3 cada una, sin importar el modo de entrega.
-// Los adicionales se cobran aparte, cada uno según su propio precio.
+// cuesta S/12 en recojo o S/13 en delivery. Las entradas que NO vinieron asociadas
+// a un fondo (es decir, las que el cliente pidió de más, sueltas) cuestan S/3 cada
+// una, sin importar el modo de entrega. Los adicionales se cobran aparte, cada uno
+// según su propio precio.
 function calcularTotal(fondos, entradas, modo = "recojo", adicionales = []) {
   const totalFondos = sumarCantidades(fondos);
   const totalEntradas = sumarCantidades(entradas);
-  const entradasSolas = Math.max(0, totalEntradas - totalFondos);
+  // Cuenta cuántas unidades de fondo realmente usaron una entrada incluida
+  // (campo entradaIncluida en cada item de fondos). El resto de entradas pedidas
+  // se consideran "extra" y se cobran aparte.
+  const entradasUsadasComoIncluidas = (fondos || []).reduce(
+    (acc, f) => acc + (f.entradaIncluida ? f.cantidad || 0 : 0),
+    0
+  );
+  const entradasSolas = Math.max(0, totalEntradas - entradasUsadasComoIncluidas);
   const precioFondo = modo === "delivery" ? PRECIO_FONDO_DELIVERY : PRECIO_FONDO_RECOJO;
   const totalAdicionales = (adicionales || []).reduce(
     (acc, a) => acc + (a.cantidad || 0) * (a.precio || 0),
@@ -83,14 +91,16 @@ const inputStyle =
 function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
-  // fondoSeleccion[i] = array con una entrada por cada unidad pedida del fondo i.
-  // Cada entrada es la proteína elegida para ESA unidad ("" si el plato no usa proteínas).
-  // Ej: fondoSeleccion[0] = ["Milanesa", "Plancha"] significa 2 unidades del fondo 0,
-  // una con Milanesa y otra con Plancha.
+  // fondoSeleccion[i] = array con un objeto por cada unidad pedida del fondo i.
+  // Cada objeto es { proteina, entrada } para ESA unidad ("" si no aplica).
+  // Ej: fondoSeleccion[0] = [{proteina:"Milanesa", entrada:"Ensalada de palta"}, {proteina:"Plancha", entrada:""}]
+  // significa 2 unidades del fondo 0: una con Milanesa + ensalada de palta, otra con Plancha sin entrada.
   const [fondoSeleccion, setFondoSeleccion] = useState(menu.fondos.map(() => []));
   // arrozElegido[i] = "con" | "sin" | null (null si ese plato no tiene la opción)
   const [arrozElegido, setArrozElegido] = useState(menu.fondos.map((f) => (f.permiteArroz ? "con" : null)));
-  const [entradaQty, setEntradaQty] = useState(menu.entradas.map(() => 0));
+  // entradaExtraQty[j] = cantidad de entradas SUELTAS (sin asociar a ningún fondo) que el
+  // cliente pide de más — estas siempre cuestan S/3 cada una.
+  const [entradaExtraQty, setEntradaExtraQty] = useState(menu.entradas.map(() => 0));
   const [adicionalQty, setAdicionalQty] = useState((menu.adicionales || []).map(() => 0));
   const [modo, setModo] = useState("recojo"); // recojo | delivery
   const [direccion, setDireccion] = useState("");
@@ -100,15 +110,17 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
 
   const fondoQty = fondoSeleccion.map((arr) => arr.length);
   const totalFondos = fondoQty.reduce((a, b) => a + b, 0);
-  const totalEntradas = entradaQty.reduce((a, b) => a + b, 0);
+  const totalEntradasExtra = entradaExtraQty.reduce((a, b) => a + b, 0);
   const precioFondoUnidad = modo === "delivery" ? PRECIO_FONDO_DELIVERY : PRECIO_FONDO_RECOJO;
-  const entradasExtra = Math.max(0, totalEntradas - totalFondos);
-  const totalPagar = calcularTotal(
-    menu.fondos.map((_, i) => ({ cantidad: fondoQty[i] })),
-    menu.entradas.map((_, i) => ({ cantidad: entradaQty[i] })),
-    modo,
-    (menu.adicionales || []).map((a, i) => ({ cantidad: adicionalQty[i], precio: a.precio }))
+  // Cuenta cuántas unidades de fondo ya eligieron una entrada incluida (para el desglose visual)
+  const entradasIncluidasElegidas = fondoSeleccion.reduce(
+    (acc, arr) => acc + arr.filter((u) => u.entrada).length,
+    0
   );
+  const totalPagar =
+    totalFondos * precioFondoUnidad +
+    totalEntradasExtra * PRECIO_ENTRADA_SOLA +
+    (menu.adicionales || []).reduce((acc, a, i) => acc + adicionalQty[i] * a.precio, 0);
 
   const bump = (arr, setArr, i, delta) => {
     const copy = [...arr];
@@ -125,18 +137,19 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
       .filter(Boolean);
   };
 
-  // Agrega una unidad del fondo i con la proteína indicada ("" si no aplica)
+  // Agrega una unidad del fondo i con la proteína indicada ("" si no aplica). La entrada
+  // de esa unidad arranca vacía (el cliente la elige después con elegirEntradaDeUnidad).
   const agregarFondo = (i, proteina) => {
     const copy = fondoSeleccion.map((arr) => [...arr]);
-    copy[i].push(proteina);
+    copy[i].push({ proteina, entrada: "" });
     setFondoSeleccion(copy);
   };
 
-  // Quita la última unidad agregada del fondo i (o una proteína específica si se indica)
+  // Quita la última unidad agregada del fondo i (o una con proteína específica si se indica)
   const quitarFondo = (i, proteinaEspecifica = null) => {
     const copy = fondoSeleccion.map((arr) => [...arr]);
     if (proteinaEspecifica !== null) {
-      const idx = copy[i].lastIndexOf(proteinaEspecifica);
+      const idx = copy[i].map((u) => u.proteina).lastIndexOf(proteinaEspecifica);
       if (idx !== -1) copy[i].splice(idx, 1);
     } else {
       copy[i].pop();
@@ -145,41 +158,61 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
   };
 
   // Cuenta cuántas unidades del fondo i tienen una proteína específica
-  const contarProteina = (i, proteina) => fondoSeleccion[i].filter((p) => p === proteina).length;
+  const contarProteina = (i, proteina) => fondoSeleccion[i].filter((u) => u.proteina === proteina).length;
+
+  // Cambia la entrada elegida de la unidad #unidadIdx del fondo i
+  const elegirEntradaDeUnidad = (i, unidadIdx, entrada) => {
+    const copy = fondoSeleccion.map((arr) => [...arr]);
+    copy[i][unidadIdx] = { ...copy[i][unidadIdx], entrada: copy[i][unidadIdx].entrada === entrada ? "" : entrada };
+    setFondoSeleccion(copy);
+  };
 
   const handleSubmit = () => {
     if (!nombre.trim()) return setError("Falta tu nombre.");
     if (!telefono.trim()) return setError("Falta tu número de teléfono.");
     const totalAdicionales = adicionalQty.reduce((a, b) => a + b, 0);
-    if (totalFondos === 0 && totalEntradas === 0 && totalAdicionales === 0) {
+    if (totalFondos === 0 && totalEntradasExtra === 0 && totalAdicionales === 0) {
       return setError("Elige al menos un plato, entrada, bebida o adicional.");
     }
     if (modo === "delivery" && !direccion.trim()) return setError("Falta la dirección de entrega.");
     setError("");
 
-    // Agrupa las unidades de cada fondo por proteína elegida, para no repetir
-    // una línea por cada unidad individual (ej: 2 con Milanesa = una línea x2).
+    // Agrupa las unidades de cada fondo por combinación de proteína + entrada elegida,
+    // para no repetir una línea por cada unidad individual.
     const fondos = [];
+    const entradasIncluidasConteo = {}; // nombre de entrada -> cuántas veces fue elegida junto a un fondo
     menu.fondos.forEach((plato, i) => {
       const seleccion = fondoSeleccion[i];
       if (seleccion.length === 0) return;
-      const porProteina = {};
-      seleccion.forEach((proteina) => {
-        const key = proteina || "__sin__";
-        porProteina[key] = (porProteina[key] || 0) + 1;
+      const porCombo = {};
+      seleccion.forEach((u) => {
+        const key = `${u.proteina || "__sin__"}|||${u.entrada || "__sin__"}`;
+        porCombo[key] = (porCombo[key] || 0) + 1;
+        if (u.entrada) entradasIncluidasConteo[u.entrada] = (entradasIncluidasConteo[u.entrada] || 0) + 1;
       });
-      Object.entries(porProteina).forEach(([key, cantidad]) => {
+      Object.entries(porCombo).forEach(([key, cantidad]) => {
+        const [proteinaKey, entradaKey] = key.split("|||");
         fondos.push({
           nombre: plato.nombre,
           cantidad,
-          ...(key !== "__sin__" ? { proteina: key } : {}),
+          ...(proteinaKey !== "__sin__" ? { proteina: proteinaKey } : {}),
+          ...(entradaKey !== "__sin__" ? { entradaIncluida: entradaKey } : {}),
           ...(plato.permiteArroz ? { arroz: arrozElegido[i] } : {}),
         });
       });
     });
 
+    // El array "entradas" combina las que vinieron incluidas con un fondo (para que
+    // queden registradas en el detalle del pedido) y las extra sueltas que el cliente
+    // pidió de más. El precio solo cuenta las EXTRA (calcularTotal ya sabe distinguir
+    // por cantidad de fondos vs cantidad de entradas total).
     const entradas = menu.entradas
-      .map((nombrePlato, i) => (entradaQty[i] > 0 ? { nombre: nombrePlato, cantidad: entradaQty[i] } : null))
+      .map((nombrePlato, i) => {
+        const incluidas = entradasIncluidasConteo[nombrePlato] || 0;
+        const extra = entradaExtraQty[i] || 0;
+        const cantidad = incluidas + extra;
+        return cantidad > 0 ? { nombre: nombrePlato, cantidad } : null;
+      })
       .filter(Boolean);
 
     const adicionales = (menu.adicionales || [])
@@ -214,7 +247,11 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
           </p>
           <div className="text-left bg-white rounded-2xl border border-[#e8ddc8] p-4 mb-7 text-sm">
             {justSubmitted.fondos.map((f, i) => {
-              const detalles = [f.proteina, f.arroz === "con" ? "con arroz" : f.arroz === "sin" ? "sin arroz" : null].filter(Boolean);
+              const detalles = [
+                f.proteina,
+                f.entradaIncluida ? `con ${f.entradaIncluida}` : null,
+                f.arroz === "con" ? "con arroz" : f.arroz === "sin" ? "sin arroz" : null,
+              ].filter(Boolean);
               return (
                 <Row
                   key={"f" + i}
@@ -223,9 +260,21 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                 />
               );
             })}
-            {justSubmitted.entradas.map((e, i) => (
-              <Row key={"e" + i} label={e.cantidad > 1 ? `Entrada (x${e.cantidad})` : "Entrada"} value={e.nombre} />
-            ))}
+            {(() => {
+              const incluidasPorNombre = {};
+              justSubmitted.fondos.forEach((f) => {
+                if (f.entradaIncluida) incluidasPorNombre[f.entradaIncluida] = (incluidasPorNombre[f.entradaIncluida] || 0) + f.cantidad;
+              });
+              return justSubmitted.entradas
+                .map((e) => {
+                  const extra = e.cantidad - (incluidasPorNombre[e.nombre] || 0);
+                  return extra > 0 ? { ...e, cantidad: extra } : null;
+                })
+                .filter(Boolean)
+                .map((e, i) => (
+                  <Row key={"ex" + i} label={e.cantidad > 1 ? `Entrada adicional (x${e.cantidad})` : "Entrada adicional"} value={e.nombre} />
+                ));
+            })()}
             {(justSubmitted.adicionales || []).map((a, i) => (
               <Row key={"a" + i} label={a.cantidad > 1 ? `Adicional (x${a.cantidad})` : "Adicional"} value={a.nombre} />
             ))}
@@ -334,6 +383,36 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                   </div>
                 );
 
+                // Selector de entrada por cada unidad ya agregada de este plato.
+                // Es opcional: si no elige ninguna, esa unidad simplemente no lleva entrada.
+                const selectorEntradasPorUnidad = fondoQty[i] > 0 && menu.entradas.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {fondoSeleccion[i].map((unidad, unidadIdx) => (
+                      <div key={unidadIdx} className="bg-[#FBF6EC] rounded-lg p-2.5">
+                        <div className="text-[11px] text-[#8a7d6b] mb-1.5">
+                          {f.nombre}
+                          {unidad.proteina ? ` — ${unidad.proteina}` : ""} #{unidadIdx + 1} &middot; elige su entrada (opcional)
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {menu.entradas.map((e) => (
+                            <button
+                              key={e}
+                              onClick={() => elegirEntradaDeUnidad(i, unidadIdx, e)}
+                              className={`text-[12px] px-2.5 py-1.5 rounded-full border-2 transition ${
+                                unidad.entrada === e
+                                  ? "border-[#5C7A4F] bg-white font-semibold text-[#2B2622]"
+                                  : "border-[#e8ddc8] bg-white text-[#5c5246]"
+                              }`}
+                            >
+                              {e}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+
                 if (opciones.length === 0) {
                   // Plato sin opciones de proteína: un solo contador, como antes.
                   return (
@@ -344,6 +423,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                         onChange={(d) => (d > 0 ? agregarFondo(i, "") : quitarFondo(i))}
                       />
                       {selectorArroz}
+                      {selectorEntradasPorUnidad}
                     </div>
                   );
                 }
@@ -388,19 +468,25 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                       })}
                     </div>
                     {selectorArroz}
+                    {selectorEntradasPorUnidad}
                   </div>
                 );
               })}
             </div>
           </Field>
 
-          <Field label="Entradas (elige cantidad de cada una)">
-            <div className="space-y-2">
-              {menu.entradas.map((e, i) => (
-                <QtyCard key={i} text={e} qty={entradaQty[i]} onChange={(d) => bump(entradaQty, setEntradaQty, i, d)} />
-              ))}
-            </div>
-          </Field>
+          {menu.entradas.length > 0 && (
+            <Field label="Entradas adicionales (opcional, S/3 cada una)">
+              <p className="text-[12px] text-[#8a7d6b] -mt-1 mb-1">
+                Usa esto solo si quieres una entrada de más, aparte de la que ya elegiste con tu plato.
+              </p>
+              <div className="space-y-2">
+                {menu.entradas.map((e, i) => (
+                  <QtyCard key={i} text={e} qty={entradaExtraQty[i]} onChange={(d) => bump(entradaExtraQty, setEntradaExtraQty, i, d)} />
+                ))}
+              </div>
+            </Field>
+          )}
 
           {(menu.adicionales || []).length > 0 && (
             <Field label="Adicionales (opcional)">
@@ -450,68 +536,79 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             <input className={inputStyle} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Sin cebolla, poca sal, etc." />
           </Field>
 
-          {(totalFondos > 0 || totalEntradas > 0 || adicionalQty.some((q) => q > 0)) && (
+          {(totalFondos > 0 || entradaExtraQty.some((q) => q > 0) || adicionalQty.some((q) => q > 0)) && (
             <div className="bg-[#2B2622] rounded-2xl p-4 text-[#FBF6EC]">
               <div className="text-[#E0A95C] text-xs uppercase tracking-wide mb-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                 Tu pedido
               </div>
               <div className="space-y-1.5 text-[14px]">
                 {/* Cada fondo cuesta lo mismo tenga o no entrada (S/12 recojo, S/13 delivery).
-                    Por eso cada unidad de fondo se muestra como un paquete completo a precio fijo. */}
+                    Si el cliente eligió una entrada para esa unidad, se muestra incluida. */}
                 {menu.fondos.map((f, i) => {
                   if (fondoQty[i] === 0) return null;
                   const opciones = opcionesProteina(i);
                   const arrozTexto = f.permiteArroz ? (arrozElegido[i] === "con" ? " (con arroz)" : " (sin arroz)") : "";
+                  // Agrupa las unidades de este fondo por la entrada que eligieron, para mostrar
+                  // una línea por combinación (ej: "2 con Ensalada de tomate", "1 sin entrada")
+                  const conteoPorEntrada = {};
+                  fondoSeleccion[i].forEach((u) => {
+                    if (opciones.length > 0) return; // ya se desglosa por proteína más abajo
+                    const key = u.entrada || "__sin__";
+                    conteoPorEntrada[key] = (conteoPorEntrada[key] || 0) + 1;
+                  });
+
                   if (opciones.length === 0) {
-                    const cant = fondoQty[i];
-                    const subtotal = cant * precioFondoUnidad;
-                    return (
-                      <div key={"sf" + i} className="flex justify-between items-baseline">
-                        <span>
-                          {f.nombre}{arrozTexto}
-                          <span className="text-[#9c9082]"> &middot; {cant} x S/{precioFondoUnidad}</span>
-                        </span>
-                        <span className="text-[#E0A95C] font-medium ml-3 shrink-0">S/ {subtotal.toFixed(2)}</span>
-                      </div>
-                    );
-                  }
-                  // Una línea por cada proteína distinta que tenga al menos 1 unidad
-                  return opciones
-                    .filter((op) => contarProteina(i, op) > 0)
-                    .map((op) => {
-                      const cant = contarProteina(i, op);
+                    return Object.entries(conteoPorEntrada).map(([key, cant]) => {
                       const subtotal = cant * precioFondoUnidad;
                       return (
-                        <div key={"sf" + i + op} className="flex justify-between items-baseline">
+                        <div key={"sf" + i + key} className="flex justify-between items-baseline">
                           <span>
-                            {f.nombre}
-                            <span className="text-[#cfc3ad]"> — {op}{arrozTexto}</span>
+                            {f.nombre}{arrozTexto}
+                            {key !== "__sin__" && <span className="text-[#cfc3ad]"> + {key}</span>}
                             <span className="text-[#9c9082]"> &middot; {cant} x S/{precioFondoUnidad}</span>
                           </span>
                           <span className="text-[#E0A95C] font-medium ml-3 shrink-0">S/ {subtotal.toFixed(2)}</span>
                         </div>
                       );
                     });
+                  }
+                  // Plato con proteínas: una línea por cada combinación proteína + entrada
+                  const conteoCombo = {};
+                  fondoSeleccion[i].forEach((u) => {
+                    const key = `${u.proteina}|||${u.entrada || "__sin__"}`;
+                    conteoCombo[key] = (conteoCombo[key] || 0) + 1;
+                  });
+                  return Object.entries(conteoCombo).map(([key, cant]) => {
+                    const [proteina, entradaKey] = key.split("|||");
+                    const subtotal = cant * precioFondoUnidad;
+                    return (
+                      <div key={"sf" + i + key} className="flex justify-between items-baseline">
+                        <span>
+                          {f.nombre}
+                          <span className="text-[#cfc3ad]"> — {proteina}{arrozTexto}</span>
+                          {entradaKey !== "__sin__" && <span className="text-[#cfc3ad]"> + {entradaKey}</span>}
+                          <span className="text-[#9c9082]"> &middot; {cant} x S/{precioFondoUnidad}</span>
+                        </span>
+                        <span className="text-[#E0A95C] font-medium ml-3 shrink-0">S/ {subtotal.toFixed(2)}</span>
+                      </div>
+                    );
+                  });
                 })}
 
-                {/* Entradas: van incluidas en el precio del fondo (no se cobran aparte) si hay
-                    suficientes fondos pedidos. Solo las que sobran cuestan S/3 cada una. */}
-                {totalEntradas > 0 && (
-                  <div className="flex justify-between items-baseline text-[#cfc3ad]">
-                    <span>
-                      Entradas elegidas
-                      <span className="text-[#9c9082]"> &middot; x{totalEntradas}</span>
-                    </span>
-                    <span className="text-[#E0A95C] font-medium ml-3 shrink-0">
-                      {entradasExtra > 0 ? `S/ ${(entradasExtra * 3).toFixed(2)}` : "Incluidas"}
-                    </span>
-                  </div>
-                )}
-                {entradasExtra > 0 && (
-                  <div className="text-[11px] text-[#9c9082] -mt-1">
-                    {totalFondos} entrada{totalFondos !== 1 ? "s" : ""} incluida{totalFondos !== 1 ? "s" : ""} con tu{totalFondos !== 1 ? "s" : ""} plato{totalFondos !== 1 ? "s" : ""}, {entradasExtra} adicional{entradasExtra !== 1 ? "es" : ""} a S/3 c/u
-                  </div>
-                )}
+                {/* Entradas adicionales: las que el cliente pidió de más, sin asociar a un fondo. */}
+                {menu.entradas.map((e, i) => {
+                  if (entradaExtraQty[i] === 0) return null;
+                  const subtotal = entradaExtraQty[i] * 3;
+                  return (
+                    <div key={"sea" + i} className="flex justify-between items-baseline text-[#cfc3ad]">
+                      <span>
+                        {e} (adicional)
+                        <span className="text-[#9c9082]"> &middot; {entradaExtraQty[i]} x S/3</span>
+                      </span>
+                      <span className="text-[#E0A95C] font-medium ml-3 shrink-0">S/ {subtotal.toFixed(2)}</span>
+                    </div>
+                  );
+                })}
 
                 {(menu.adicionales || []).map((a, i) => {
                   if (adicionalQty[i] === 0) return null;
@@ -1379,6 +1476,7 @@ function OrderCard({ order, onUpdate, onDelete }) {
           <div key={"f" + i}>
             {f.nombre}
             {f.proteina && <span className="text-[#9C7A3C]"> — {f.proteina}</span>}
+            {f.entradaIncluida && <span className="text-[#5C7A4F]"> + {f.entradaIncluida}</span>}
             {f.arroz && <span className="text-[#9C7A3C]"> ({f.arroz === "con" ? "con arroz" : "sin arroz"})</span>}{" "}
             {f.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{f.cantidad}</span>}
           </div>
