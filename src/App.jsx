@@ -331,7 +331,11 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
             Menú de hoy &middot; {todayLabel()}
           </div>
           <h1 className="font-display text-[2rem] leading-[1.1] mb-1">{menu.fondos[0]?.nombre}</h1>
-          <p className="text-[#cfc3ad] text-[15px] mb-2">o {menu.fondos[1]?.nombre}</p>
+          {menu.fondos.length > 1 && (
+            <p className="text-[#cfc3ad] text-[15px] mb-2">
+              o {menu.fondos.slice(1).map((f) => f.nombre).join(" · o ")}
+            </p>
+          )}
           <p className="text-[#E0A95C] text-[14px]">+ Refresco: {menu.bebida}</p>
         </div>
       </div>
@@ -385,13 +389,17 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
 
                 // Selector de entrada por cada unidad ya agregada de este plato.
                 // Es opcional: si no elige ninguna, esa unidad simplemente no lleva entrada.
+                // Esta entrada va INCLUIDA gratis con el fondo. Si el cliente quiere una
+                // entrada de más (pagada aparte, S/3), lo hace en la sección de abajo
+                // "Entrada extra", que queda justo después de esta para que no se confundan.
                 const selectorEntradasPorUnidad = fondoQty[i] > 0 && menu.entradas.length > 0 && (
                   <div className="mt-2 space-y-2">
                     {fondoSeleccion[i].map((unidad, unidadIdx) => (
                       <div key={unidadIdx} className="bg-[#FBF6EC] rounded-lg p-2.5">
                         <div className="text-[11px] text-[#8a7d6b] mb-1.5">
                           {f.nombre}
-                          {unidad.proteina ? ` — ${unidad.proteina}` : ""} #{unidadIdx + 1} &middot; elige su entrada (opcional)
+                          {unidad.proteina ? ` — ${unidad.proteina}` : ""} #{unidadIdx + 1} &middot; elige su entrada{" "}
+                          <span className="text-[#5C7A4F] font-medium">(incluida, gratis)</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {menu.entradas.map((e) => (
@@ -476,13 +484,19 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
           </Field>
 
           {menu.entradas.length > 0 && (
-            <Field label="Entradas adicionales (opcional, S/3 cada una)">
+            <Field label="Entrada extra (S/ 3.00 cada una)">
               <p className="text-[12px] text-[#8a7d6b] -mt-1 mb-1">
-                Usa esto solo si quieres una entrada de más, aparte de la que ya elegiste con tu plato.
+                Esto es aparte de la entrada gratis que ya elegiste arriba con tu plato. Solo úsalo si quieres una de más.
               </p>
               <div className="space-y-2">
                 {menu.entradas.map((e, i) => (
-                  <QtyCard key={i} text={e} qty={entradaExtraQty[i]} onChange={(d) => bump(entradaExtraQty, setEntradaExtraQty, i, d)} />
+                  <QtyCard
+                    key={i}
+                    text={e}
+                    priceTag="+ S/ 3.00"
+                    qty={entradaExtraQty[i]}
+                    onChange={(d) => bump(entradaExtraQty, setEntradaExtraQty, i, d)}
+                  />
                 ))}
               </div>
             </Field>
@@ -494,7 +508,8 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                 {menu.adicionales.map((a, i) => (
                   <QtyCard
                     key={i}
-                    text={`${a.nombre} — S/ ${a.precio.toFixed(2)}`}
+                    text={a.nombre}
+                    priceTag={`+ S/ ${a.precio.toFixed(2)}`}
                     qty={adicionalQty[i]}
                     onChange={(d) => bump(adicionalQty, setAdicionalQty, i, d)}
                   />
@@ -602,7 +617,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                   return (
                     <div key={"sea" + i} className="flex justify-between items-baseline text-[#cfc3ad]">
                       <span>
-                        {e} (adicional)
+                        {e} (extra)
                         <span className="text-[#9c9082]"> &middot; {entradaExtraQty[i]} x S/3</span>
                       </span>
                       <span className="text-[#E0A95C] font-medium ml-3 shrink-0">S/ {subtotal.toFixed(2)}</span>
@@ -669,7 +684,9 @@ function Row({ label, value }) {
 
 // Tarjeta de cantidad: botones - y + para elegir cuántas unidades de un plato.
 // Cuando qty > 0, queda resaltada en BLANCO con borde rojo (no gris) para que se note claro que está elegida.
-function QtyCard({ text, qty, onChange }) {
+// priceTag (opcional) muestra el precio justo al lado del nombre, al estilo de apps de delivery
+// (item + precio + selector de cantidad), para que el costo quede clarísimo antes de tocar el "+".
+function QtyCard({ text, qty, onChange, priceTag }) {
   const active = qty > 0;
   return (
     <div
@@ -677,7 +694,10 @@ function QtyCard({ text, qty, onChange }) {
         active ? "border-[#C1452D] bg-white shadow-[0_2px_8px_rgba(193,69,45,0.12)]" : "border-[#e8ddc8] bg-white"
       }`}
     >
-      <span className={`text-[14px] ${active ? "font-semibold text-[#2B2622]" : "text-[#5c5246]"}`}>{text}</span>
+      <div className="flex flex-col">
+        <span className={`text-[14px] ${active ? "font-semibold text-[#2B2622]" : "text-[#5c5246]"}`}>{text}</span>
+        {priceTag && <span className="text-[12px] text-[#9C7A3C] font-medium">{priceTag}</span>}
+      </div>
       <div className="flex items-center gap-2.5 shrink-0">
         <button
           onClick={() => onChange(-1)}
@@ -831,10 +851,21 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
     setDraft(copy);
   };
 
-  // Actualiza un campo específico (nombre o proteinas) de un plato de fondo
+  // Actualiza un campo específico (nombre, proteinas o permiteArroz) de un plato de fondo
   const updateFondo = (idx, campo, value) => {
     const copy = { ...draft, fondos: draft.fondos.map((f, i) => (i === idx ? { ...f, [campo]: value } : f)) };
     setDraft(copy);
+  };
+
+  // Agrega un plato de fondo nuevo y vacío al final de la lista
+  const agregarFondoMenu = () => {
+    setDraft({ ...draft, fondos: [...draft.fondos, { nombre: "", proteinas: "", permiteArroz: false }] });
+  };
+
+  // Quita un plato de fondo del menú (deja al menos 1)
+  const quitarFondoMenu = (idx) => {
+    if (draft.fondos.length <= 1) return;
+    setDraft({ ...draft, fondos: draft.fondos.filter((_, i) => i !== idx) });
   };
 
   const saveMenuDraft = async () => {
@@ -1006,55 +1037,58 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
 
         {tab === "menu" && (
           <div className="space-y-5 pb-10">
-            <Field label="Plato de fondo 1">
-              <input
-                className={inputStyle}
-                value={draft.fondos[0]?.nombre || ""}
-                onChange={(e) => updateFondo(0, "nombre", e.target.value)}
-              />
+            <Field label="Platos de fondo">
+              <div className="space-y-3">
+                {draft.fondos.map((fondo, idx) => (
+                  <div key={idx} className="rounded-xl border border-[#e8ddc8] bg-white p-3.5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="text-[11px] uppercase tracking-wide text-[#9C7A3C]"
+                        style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                      >
+                        Plato {idx + 1}
+                      </span>
+                      {draft.fondos.length > 1 && (
+                        <button
+                          onClick={() => quitarFondoMenu(idx)}
+                          className="text-[#C1452D] hover:bg-[#C1452D]/8 rounded-lg p-1.5"
+                          title="Quitar este plato"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      className={inputStyle}
+                      value={fondo.nombre || ""}
+                      onChange={(e) => updateFondo(idx, "nombre", e.target.value)}
+                      placeholder="Nombre del plato"
+                    />
+                    <input
+                      className={inputStyle}
+                      value={fondo.proteinas || ""}
+                      onChange={(e) => updateFondo(idx, "proteinas", e.target.value)}
+                      placeholder="Opciones de proteína (opcional, separadas por coma)"
+                    />
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={fondo.permiteArroz || false}
+                        onChange={(e) => updateFondo(idx, "permiteArroz", e.target.checked)}
+                        className="w-4 h-4 accent-[#C1452D]"
+                      />
+                      <span className="text-[13px] text-[#6b5f52]">Se puede pedir con o sin arroz</span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={agregarFondoMenu}
+                className="mt-2 text-[13px] text-[#5C7A4F] font-medium flex items-center gap-1 hover:underline"
+              >
+                <Plus size={14} /> Agregar otro plato de fondo
+              </button>
             </Field>
-            <Field label="Opciones de proteína del plato 1 (opcional, separadas por coma)">
-              <input
-                className={inputStyle}
-                value={draft.fondos[0]?.proteinas || ""}
-                onChange={(e) => updateFondo(0, "proteinas", e.target.value)}
-                placeholder="Ej: Plancha, Milanesa, Presa de seco"
-              />
-            </Field>
-            <label className="flex items-center gap-2 -mt-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={draft.fondos[0]?.permiteArroz || false}
-                onChange={(e) => updateFondo(0, "permiteArroz", e.target.checked)}
-                className="w-4 h-4 accent-[#C1452D]"
-              />
-              <span className="text-[13px] text-[#6b5f52]">Este plato se puede pedir con o sin arroz</span>
-            </label>
-
-            <Field label="Plato de fondo 2">
-              <input
-                className={inputStyle}
-                value={draft.fondos[1]?.nombre || ""}
-                onChange={(e) => updateFondo(1, "nombre", e.target.value)}
-              />
-            </Field>
-            <Field label="Opciones de proteína del plato 2 (opcional, separadas por coma)">
-              <input
-                className={inputStyle}
-                value={draft.fondos[1]?.proteinas || ""}
-                onChange={(e) => updateFondo(1, "proteinas", e.target.value)}
-                placeholder="Ej: Presa de seco, Pollo a la plancha, Bistec"
-              />
-            </Field>
-            <label className="flex items-center gap-2 -mt-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={draft.fondos[1]?.permiteArroz || false}
-                onChange={(e) => updateFondo(1, "permiteArroz", e.target.checked)}
-                className="w-4 h-4 accent-[#C1452D]"
-              />
-              <span className="text-[13px] text-[#6b5f52]">Este plato se puede pedir con o sin arroz</span>
-            </label>
 
             <Field label="Entradas del día">
               <div className="space-y-2">
@@ -1443,6 +1477,23 @@ function EmptyState({ text }) {
 
 function OrderCard({ order, onUpdate, onDelete }) {
   const total = typeof order.total === "number" ? order.total : calcularTotal(order.fondos, order.entradas, order.modo, order.adicionales);
+
+  // Las entradas guardadas en el pedido incluyen TANTO las que vinieron incluidas
+  // gratis con un fondo COMO las extra pagadas aparte. Como cada línea de fondo ya
+  // muestra su entrada incluida (ej. "Lomo saltado + Ensalada de palta"), aquí solo
+  // mostramos las entradas EXTRA (las que sobran después de restar las incluidas),
+  // para no repetir la misma entrada dos veces en la tarjeta.
+  const incluidasPorNombre = {};
+  (order.fondos || []).forEach((f) => {
+    if (f.entradaIncluida) incluidasPorNombre[f.entradaIncluida] = (incluidasPorNombre[f.entradaIncluida] || 0) + (f.cantidad || 0);
+  });
+  const entradasExtra = (order.entradas || [])
+    .map((e) => {
+      const extra = e.cantidad - (incluidasPorNombre[e.nombre] || 0);
+      return extra > 0 ? { ...e, cantidad: extra } : null;
+    })
+    .filter(Boolean);
+
   return (
     <div className="bg-white rounded-2xl border border-[#eee2cb] p-4">
       <div className="flex items-start justify-between mb-2.5">
@@ -1481,9 +1532,10 @@ function OrderCard({ order, onUpdate, onDelete }) {
             {f.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{f.cantidad}</span>}
           </div>
         ))}
-        {order.entradas.map((e, i) => (
+        {entradasExtra.map((e, i) => (
           <div key={"e" + i} className="text-[#8a7d6b]">
-            + {e.nombre} {e.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{e.cantidad}</span>}
+            + {e.nombre} <span className="text-[10px] uppercase text-[#9C7A3C]">(extra)</span>{" "}
+            {e.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{e.cantidad}</span>}
           </div>
         ))}
         {(order.adicionales || []).map((a, i) => (
