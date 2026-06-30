@@ -83,7 +83,7 @@ function Field({ label, children }) {
 }
 
 const inputStyle =
-  "w-full rounded-lg border border-[#dccdb4] bg-[#FFFDF8] px-3.5 py-2.5 text-[15px] text-[#2B2622] placeholder-[#a89a86] outline-none focus:border-[#C1452D] focus:ring-2 focus:ring-[#C1452D]/15 transition";
+  "w-full rounded-lg border border-[#dccdb4] bg-[#FFFDF8] px-3.5 py-2.5 text-[15px] text-[#2B2622] placeholder-[#998C76] outline-none focus:border-[#C1452D] focus:ring-2 focus:ring-[#C1452D]/15 transition";
 
 // =====================================================================
 // CLIENT VIEW
@@ -306,7 +306,12 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
   return (
     <div className="min-h-screen bg-[#FBF6EC] pb-32">
       {/* Hero: la pizarra del menú */}
-      <div className="relative bg-[#2B2622] text-[#FBF6EC] px-5 pt-9 pb-12 overflow-hidden">
+      <div className="relative bg-gradient-to-b from-[#332A21] to-[#211B16] text-[#FBF6EC] px-5 pt-9 pb-14 overflow-hidden">
+        {/* Resplandor cálido sutil, como una luz de cocina, para que el negro no se vea plano */}
+        <div
+          className="absolute -top-10 -right-16 w-56 h-56 rounded-full opacity-[0.18] blur-3xl pointer-events-none"
+          style={{ backgroundColor: "#C1452D" }}
+        />
         <div
           className="absolute inset-0 opacity-[0.06]"
           style={{
@@ -396,7 +401,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                   <div className="mt-2 space-y-2">
                     {fondoSeleccion[i].map((unidad, unidadIdx) => (
                       <div key={unidadIdx} className="bg-[#FBF6EC] rounded-lg p-2.5">
-                        <div className="text-[11px] text-[#8a7d6b] mb-1.5">
+                        <div className="text-[11px] text-[#6E6253] mb-1.5">
                           {f.nombre}
                           {unidad.proteina ? ` — ${unidad.proteina}` : ""} #{unidadIdx + 1} &middot; elige su entrada{" "}
                           <span className="text-[#5C7A4F] font-medium">(incluida, gratis)</span>
@@ -452,16 +457,16 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
                         const cant = contarProteina(i, op);
                         return (
                           <div key={op} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2">
-                            <span className={`text-[13px] ${cant > 0 ? "font-medium text-[#2B2622]" : "text-[#8a7d6b]"}`}>{op}</span>
+                            <span className={`text-[13px] ${cant > 0 ? "font-medium text-[#2B2622]" : "text-[#6E6253]"}`}>{op}</span>
                             <div className="flex items-center gap-2.5">
                               <button
                                 onClick={() => quitarFondo(i, op)}
                                 disabled={cant === 0}
-                                className="w-6 h-6 rounded-full border border-[#dccdb4] text-[#8a7d6b] flex items-center justify-center disabled:opacity-30 active:bg-[#f0e8d6]"
+                                className="w-6 h-6 rounded-full border border-[#dccdb4] text-[#6E6253] flex items-center justify-center disabled:opacity-30 active:bg-[#f0e8d6]"
                               >
                                 <Minus size={12} />
                               </button>
-                              <span className={`w-4 text-center text-[14px] font-semibold ${cant > 0 ? "text-[#C1452D]" : "text-[#c7b89a]"}`}>
+                              <span className={`w-4 text-center text-[14px] font-semibold ${cant > 0 ? "text-[#C1452D]" : "text-[#B8A684]"}`}>
                                 {cant}
                               </span>
                               <button
@@ -485,7 +490,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
 
           {menu.entradas.length > 0 && (
             <Field label="Entrada extra (S/ 3.00 cada una)">
-              <p className="text-[12px] text-[#8a7d6b] -mt-1 mb-1">
+              <p className="text-[12px] text-[#6E6253] -mt-1 mb-1">
                 Esto es aparte de la entrada gratis que ya elegiste arriba con tu plato. Solo úsalo si quieres una de más.
               </p>
               <div className="space-y-2">
@@ -552,7 +557,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
           </Field>
 
           {(totalFondos > 0 || entradaExtraQty.some((q) => q > 0) || adicionalQty.some((q) => q > 0)) && (
-            <div className="bg-[#2B2622] rounded-2xl p-4 text-[#FBF6EC]">
+            <div className="bg-gradient-to-b from-[#332A21] to-[#211B16] rounded-2xl p-4 text-[#FBF6EC]">
               <div className="text-[#E0A95C] text-xs uppercase tracking-wide mb-2" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                 Tu pedido
               </div>
@@ -676,7 +681,7 @@ function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset }) {
 function Row({ label, value }) {
   return (
     <div className="flex justify-between py-1.5 border-b border-[#f0e8d6] last:border-0">
-      <span className="text-[#8a7d6b]">{label}</span>
+      <span className="text-[#6E6253]">{label}</span>
       <span className="text-[#2B2622] font-medium text-right max-w-[60%]">{value}</span>
     </div>
   );
@@ -702,11 +707,11 @@ function QtyCard({ text, qty, onChange, priceTag }) {
         <button
           onClick={() => onChange(-1)}
           disabled={qty === 0}
-          className="w-7 h-7 rounded-full border border-[#dccdb4] text-[#8a7d6b] flex items-center justify-center disabled:opacity-30 active:bg-[#f0e8d6]"
+          className="w-7 h-7 rounded-full border border-[#dccdb4] text-[#6E6253] flex items-center justify-center disabled:opacity-30 active:bg-[#f0e8d6]"
         >
           <Minus size={14} />
         </button>
-        <span className={`w-5 text-center text-[15px] font-semibold ${active ? "text-[#C1452D]" : "text-[#c7b89a]"}`}>{qty}</span>
+        <span className={`w-5 text-center text-[15px] font-semibold ${active ? "text-[#C1452D]" : "text-[#B8A684]"}`}>{qty}</span>
         <button
           onClick={() => onChange(1)}
           className="w-7 h-7 rounded-full bg-[#C1452D] text-white flex items-center justify-center active:bg-[#a93a25]"
@@ -767,7 +772,7 @@ function PinScreen({ onUnlock, onBack }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#2B2622] flex items-center justify-center px-5">
+    <div className="min-h-screen bg-gradient-to-b from-[#332A21] to-[#211B16] flex items-center justify-center px-5">
       <div className="max-w-xs w-full text-center">
         <Lock size={28} color="#E0A95C" className="mx-auto mb-4" />
         <h2 className="font-display text-xl text-[#FBF6EC] mb-1">Panel de mamá</h2>
@@ -976,7 +981,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
 
   return (
     <div className="min-h-screen bg-[#FBF6EC]">
-      <div className="bg-[#2B2622] text-[#FBF6EC] px-5 pt-6 pb-5">
+      <div className="bg-gradient-to-b from-[#332A21] to-[#211B16] text-[#FBF6EC] px-5 pt-6 pb-5">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button onClick={onBack} className="flex items-center gap-1.5 text-[#cfc3ad] text-sm hover:text-white">
             <ArrowLeft size={16} /> Ver como cliente
@@ -1001,7 +1006,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex-1 text-[13px] py-2 rounded-lg font-medium transition whitespace-nowrap ${
-                tab === t.id ? "bg-[#2B2622] text-white" : "text-[#8a7d6b]"
+                tab === t.id ? "bg-[#2B2622] text-white" : "text-[#6E6253]"
               }`}
             >
               {t.label}
@@ -1012,7 +1017,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
         {tab === "pedidos" && (
           <div className="pb-10">
             {todaysOrders.length > 0 && (
-              <div className="bg-[#2B2622] rounded-2xl p-4 mb-4 flex items-center justify-between">
+              <div className="bg-gradient-to-b from-[#332A21] to-[#211B16] rounded-2xl p-4 mb-4 flex items-center justify-between">
                 <span className="text-[#cfc3ad] text-sm">Total vendido hoy</span>
                 <span className="text-[#E0A95C] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   S/ {totalVendidoHoy.toFixed(2)}
@@ -1135,7 +1140,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                       placeholder="Ej: Huevo"
                     />
                     <div className="flex items-center shrink-0 gap-1">
-                      <span className="text-[13px] text-[#8a7d6b]">S/</span>
+                      <span className="text-[13px] text-[#6E6253]">S/</span>
                       <input
                         type="number"
                         min="0"
@@ -1182,7 +1187,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
             >
               {savedFlash ? "✓ Menú actualizado" : "Guardar menú de hoy"}
             </button>
-            <p className="text-[#8a7d6b] text-[13px] text-center">
+            <p className="text-[#6E6253] text-[13px] text-center">
               En cuanto guardas, todos los que abran la página ven este menú al instante. No hace falta volver a mandar nada por WhatsApp.
             </p>
           </div>
@@ -1192,17 +1197,17 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
           <div className="space-y-3 pb-10">
             {deudaList.length === 0 && <EmptyState text="Nadie debe nada registrado por ahora." />}
             {deudaList.map((d) => (
-              <div key={d.nombre + d.telefono} className="bg-white rounded-2xl border border-[#eee2cb] p-4">
+              <div key={d.nombre + d.telefono} className="bg-white rounded-2xl border border-[#eee2cb] shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4">
                 <div className="flex items-center justify-between mb-2.5">
                   <div>
                     <div className="font-medium text-[#2B2622]">{d.nombre}</div>
-                    <div className="text-[13px] text-[#8a7d6b] flex items-center gap-1">
+                    <div className="text-[13px] text-[#6E6253] flex items-center gap-1">
                       <Phone size={12} /> {d.telefono}
                     </div>
                   </div>
                   <div className="text-right">
                     <Tag color="#C1452D">S/ {d.monto.toFixed(2)}</Tag>
-                    <div className="text-[11px] text-[#a89a86] mt-1">{d.cantidad} pedido{d.cantidad > 1 ? "s" : ""}</div>
+                    <div className="text-[11px] text-[#998C76] mt-1">{d.cantidad} pedido{d.cantidad > 1 ? "s" : ""}</div>
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -1214,7 +1219,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                       <span className="text-[#5c5246]">
                         {p.fecha} &middot; {resumen.length > 28 ? resumen.slice(0, 28) + "…" : resumen}
                         <span className="text-[#C1452D] font-medium"> &middot; S/ {montoPedido.toFixed(2)}</span>
-                        <span className="text-[#a89a86]"> &middot; {PAY_LABELS[p.pago]}</span>
+                        <span className="text-[#998C76]"> &middot; {PAY_LABELS[p.pago]}</span>
                       </span>
                       <button
                         onClick={() => onOrderUpdate(p.id, { pagado: true })}
@@ -1265,7 +1270,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                 </Field>
 
                 {ordersDelDia.length > 0 && (
-                  <div className="bg-[#2B2622] rounded-2xl p-4 my-4 flex items-center justify-between">
+                  <div className="bg-gradient-to-b from-[#332A21] to-[#211B16] rounded-2xl p-4 my-4 flex items-center justify-between">
                     <span className="text-[#cfc3ad] text-sm">
                       Total vendido &middot; {ordersDelDia.length} pedido{ordersDelDia.length > 1 ? "s" : ""}
                     </span>
@@ -1316,17 +1321,17 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
 
                 <div className="space-y-4 mt-4">
                   {clientesEncontrados.map((c) => (
-                    <div key={c.nombre + c.telefono} className="bg-white rounded-2xl border border-[#eee2cb] p-4">
+                    <div key={c.nombre + c.telefono} className="bg-white rounded-2xl border border-[#eee2cb] shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div>
                           <div className="font-medium text-[#2B2622]">{c.nombre}</div>
-                          <div className="text-[13px] text-[#8a7d6b] flex items-center gap-1">
+                          <div className="text-[13px] text-[#6E6253] flex items-center gap-1">
                             <Phone size={12} /> {c.telefono}
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="text-[#2B2622] font-semibold text-[15px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                            S/ {c.totalGastado.toFixed(2)} <span className="text-[11px] text-[#a89a86] font-normal">en total</span>
+                            S/ {c.totalGastado.toFixed(2)} <span className="text-[11px] text-[#998C76] font-normal">en total</span>
                           </div>
                           {c.totalDebe > 0 && (
                             <div className="text-[#C1452D] text-[12px] font-medium mt-0.5">Debe S/ {c.totalDebe.toFixed(2)}</div>
@@ -1366,38 +1371,38 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
 
         {tab === "semanal" && (
           <div className="pb-10">
-            <p className="text-[#8a7d6b] text-[13px] mb-4">
+            <p className="text-[#6E6253] text-[13px] mb-4">
               Resumen de los últimos 7 días &middot; útil para revisar cada sábado cómo fue la semana.
             </p>
 
             {/* Totales generales */}
             <div className="grid grid-cols-2 gap-3 mb-5">
-              <div className="bg-[#2B2622] rounded-2xl p-4">
+              <div className="bg-gradient-to-b from-[#332A21] to-[#211B16] rounded-2xl p-4">
                 <div className="text-[#cfc3ad] text-[12px] mb-1">Vendido esta semana</div>
                 <div className="text-[#E0A95C] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   S/ {resumenSemanal.totalSemana.toFixed(2)}
                 </div>
                 <div className="text-[#9c9082] text-[11px] mt-1">{resumenSemanal.totalPedidos} pedidos</div>
               </div>
-              <div className="bg-white border border-[#eee2cb] rounded-2xl p-4">
-                <div className="text-[#8a7d6b] text-[12px] mb-1">Deuda acumulada</div>
+              <div className="bg-white border border-[#eee2cb] rounded-2xl shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4">
+                <div className="text-[#6E6253] text-[12px] mb-1">Deuda acumulada</div>
                 <div className="text-[#C1452D] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   S/ {resumenSemanal.totalDeudaSemana.toFixed(2)}
                 </div>
-                <div className="text-[#a89a86] text-[11px] mt-1">de esta semana</div>
+                <div className="text-[#998C76] text-[11px] mt-1">de esta semana</div>
               </div>
             </div>
 
             {/* Detalle de quién debe esta semana */}
             {resumenSemanal.listaDeudores.length > 0 && (
-              <div className="bg-white border border-[#eee2cb] rounded-2xl p-4 mb-5">
+              <div className="bg-white border border-[#eee2cb] rounded-2xl shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4 mb-5">
                 <div className="text-[#2B2622] text-[14px] font-medium mb-3">Quién debe esta semana</div>
                 <div className="space-y-2">
                   {resumenSemanal.listaDeudores.map((d) => (
                     <div key={d.nombre + d.telefono} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2">
                       <div>
                         <div className="text-[13px] text-[#2B2622] font-medium">{d.nombre}</div>
-                        <div className="text-[11px] text-[#a89a86]">
+                        <div className="text-[11px] text-[#998C76]">
                           {d.telefono} &middot; {d.pedidos} pedido{d.pedidos > 1 ? "s" : ""}
                         </div>
                       </div>
@@ -1411,7 +1416,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
             )}
 
             {/* Gráfico de barras: ventas por día */}
-            <div className="bg-white border border-[#eee2cb] rounded-2xl p-4 mb-5">
+            <div className="bg-white border border-[#eee2cb] rounded-2xl shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4 mb-5">
               <div className="text-[#2B2622] text-[14px] font-medium mb-4">Ventas por día</div>
               <div className="flex items-end justify-between gap-2 h-36">
                 {resumenSemanal.dias.map((d) => {
@@ -1419,7 +1424,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                   const esHoy = d.fecha === todayKey();
                   return (
                     <div key={d.fecha} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                      <span className="text-[11px] text-[#8a7d6b]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                      <span className="text-[11px] text-[#6E6253]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                         {d.total > 0 ? d.total.toFixed(0) : ""}
                       </span>
                       <div
@@ -1427,7 +1432,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
                         style={{ height: `${alturaPct}%`, minHeight: "4px" }}
                         title={`${d.etiqueta}: S/ ${d.total.toFixed(2)}`}
                       />
-                      <span className={`text-[11px] ${esHoy ? "text-[#C1452D] font-semibold" : "text-[#8a7d6b]"}`}>{d.etiqueta}</span>
+                      <span className={`text-[11px] ${esHoy ? "text-[#C1452D] font-semibold" : "text-[#6E6253]"}`}>{d.etiqueta}</span>
                     </div>
                   );
                 })}
@@ -1435,10 +1440,10 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
             </div>
 
             {/* Platos más pedidos */}
-            <div className="bg-white border border-[#eee2cb] rounded-2xl p-4">
+            <div className="bg-white border border-[#eee2cb] rounded-2xl shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4">
               <div className="text-[#2B2622] text-[14px] font-medium mb-3">Platos más pedidos</div>
               {resumenSemanal.platosTop.length === 0 && (
-                <p className="text-[#a89a86] text-[13px]">Todavía no hay pedidos esta semana.</p>
+                <p className="text-[#998C76] text-[13px]">Todavía no hay pedidos esta semana.</p>
               )}
               <div className="space-y-2.5">
                 {resumenSemanal.platosTop.map((p, idx) => {
@@ -1470,7 +1475,7 @@ function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onB
 function EmptyState({ text }) {
   return (
     <div className="text-center py-12 px-6 bg-white rounded-2xl border border-dashed border-[#e0d3b8]">
-      <p className="text-[#8a7d6b] text-sm leading-relaxed">{text}</p>
+      <p className="text-[#6E6253] text-sm leading-relaxed">{text}</p>
     </div>
   );
 }
@@ -1495,7 +1500,7 @@ function OrderCard({ order, onUpdate, onDelete }) {
     .filter(Boolean);
 
   return (
-    <div className="bg-white rounded-2xl border border-[#eee2cb] p-4">
+    <div className="bg-white rounded-2xl border border-[#eee2cb] shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4">
       <div className="flex items-start justify-between mb-2.5">
         <div>
           <div className="font-medium text-[#2B2622] flex items-center gap-1.5">
@@ -1506,7 +1511,7 @@ function OrderCard({ order, onUpdate, onDelete }) {
               </span>
             )}
           </div>
-          <div className="text-[13px] text-[#8a7d6b] flex items-center gap-1">
+          <div className="text-[13px] text-[#6E6253] flex items-center gap-1">
             <Phone size={12} /> {order.telefono}
             <Clock size={12} className="ml-1.5" />{" "}
             {new Date(order.creadoEn).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}
@@ -1516,7 +1521,7 @@ function OrderCard({ order, onUpdate, onDelete }) {
           <div className="text-[#C1452D] font-semibold text-[15px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
             S/ {total.toFixed(2)}
           </div>
-          <button onClick={() => onDelete(order.id)} className="text-[#c7b89a] hover:text-[#C1452D] p-1">
+          <button onClick={() => onDelete(order.id)} className="text-[#B8A684] hover:text-[#C1452D] p-1">
             <Trash2 size={16} />
           </button>
         </div>
@@ -1533,18 +1538,18 @@ function OrderCard({ order, onUpdate, onDelete }) {
           </div>
         ))}
         {entradasExtra.map((e, i) => (
-          <div key={"e" + i} className="text-[#8a7d6b]">
+          <div key={"e" + i} className="text-[#6E6253]">
             + {e.nombre} <span className="text-[10px] uppercase text-[#9C7A3C]">(extra)</span>{" "}
             {e.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{e.cantidad}</span>}
           </div>
         ))}
         {(order.adicionales || []).map((a, i) => (
-          <div key={"a" + i} className="text-[#8a7d6b]">
+          <div key={"a" + i} className="text-[#6E6253]">
             + {a.nombre} {a.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{a.cantidad}</span>}
           </div>
         ))}
         {order.bebida && (
-          <div className="text-[#8a7d6b]">
+          <div className="text-[#6E6253]">
             {order.bebida.nombre} {order.bebida.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{order.bebida.cantidad}</span>}
           </div>
         )}
@@ -1561,7 +1566,7 @@ function OrderCard({ order, onUpdate, onDelete }) {
       <div className="flex items-center justify-between pt-3 border-t border-[#f0e8d6]">
         <button
           onClick={() => onUpdate(order.id, { listo: !order.listo })}
-          className={`text-[13px] font-medium flex items-center gap-1.5 ${order.listo ? "text-[#5C7A4F]" : "text-[#8a7d6b]"}`}
+          className={`text-[13px] font-medium flex items-center gap-1.5 ${order.listo ? "text-[#5C7A4F]" : "text-[#6E6253]"}`}
         >
           {order.listo ? <CheckCircle2 size={16} /> : <Circle size={16} />}
           {order.listo ? "Listo" : "Marcar listo"}
