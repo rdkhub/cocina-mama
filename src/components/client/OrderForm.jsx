@@ -1,9 +1,9 @@
 // src/components/client/OrderForm.jsx
 import React from "react";
-import { Minus, Plus } from "lucide-react";
 import { Field, QtyCard, SelectCard } from "../ui";
 import { Store, MapPin } from "lucide-react";
 import { PAY_LABELS } from "../../utils/pedidos";
+import { ProteinOptionRow } from "./ProteinOptionRow";
 
 export const inputStyle =
   "w-full rounded-lg border border-[#dccdb4] bg-[#FFFDF8] px-3.5 py-2.5 text-[15px] text-[#2B2622] placeholder-[#998C76] outline-none focus:border-[#C1452D] focus:ring-2 focus:ring-[#C1452D]/15 transition";
@@ -48,7 +48,7 @@ export function OrderForm({
           {menu.fondos.map((f, i) => {
             const opciones = opcionesProteina(i);
             const selectorArroz = f.permiteArroz && fondoQty[i] > 0 && (
-              <div className="grid grid-cols-2 gap-1.5 mt-2">
+              <div className="grid grid-cols-2 gap-1.5 mt-3">
                 <button
                   onClick={() => {
                     const copy = [...arrozElegido];
@@ -85,8 +85,11 @@ export function OrderForm({
             // Esta entrada va INCLUIDA gratis con el fondo. Si el cliente quiere una
             // entrada de más (pagada aparte, S/3), lo hace en la sección de abajo
             // "Entrada extra", que queda justo después de esta para que no se confundan.
+            // NOTA: el margen mt-3 (antes mt-2) le da más "aire" a este bloque respecto
+            // al contador de arriba, para evitar toques accidentales en mobile justo
+            // después de agregar una unidad.
             const selectorEntradasPorUnidad = fondoQty[i] > 0 && menu.entradas.length > 0 && (
-              <div className="mt-2 space-y-2">
+              <div className="mt-3 space-y-2">
                 {fondoSeleccion[i].map((unidad, unidadIdx) => (
                   <div key={unidadIdx} className="bg-[#FBF6EC] rounded-lg p-2.5">
                     <div className="text-[11px] text-[#6E6253] mb-1.5">
@@ -94,12 +97,13 @@ export function OrderForm({
                       {unidad.proteina ? ` — ${unidad.proteina}` : ""} #{unidadIdx + 1} &middot; elige su entrada{" "}
                       <span className="text-[#5C7A4F] font-medium">(incluida, gratis)</span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-2">
                       {menu.entradas.map((e) => (
                         <button
                           key={e}
                           onClick={() => elegirEntradaDeUnidad(i, unidadIdx, e)}
-                          className={`text-[12px] px-2.5 py-1.5 rounded-full border-2 transition ${
+                          style={{ touchAction: "manipulation" }}
+                          className={`text-[12px] px-3 py-2 rounded-full border-2 transition ${
                             unidad.entrada === e
                               ? "border-[#5C7A4F] bg-white font-semibold text-[#2B2622]"
                               : "border-[#e8ddc8] bg-white text-[#5c5246]"
@@ -141,32 +145,15 @@ export function OrderForm({
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  {opciones.map((op) => {
-                    const cant = contarProteina(i, op);
-                    return (
-                      <div key={op} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2">
-                        <span className={`text-[13px] ${cant > 0 ? "font-medium text-[#2B2622]" : "text-[#6E6253]"}`}>{op}</span>
-                        <div className="flex items-center gap-2.5">
-                          <button
-                            onClick={() => quitarFondo(i, op)}
-                            disabled={cant === 0}
-                            className="w-6 h-6 rounded-full border border-[#dccdb4] text-[#6E6253] flex items-center justify-center disabled:opacity-30 active:bg-[#f0e8d6]"
-                          >
-                            <Minus size={12} />
-                          </button>
-                          <span className={`w-4 text-center text-[14px] font-semibold ${cant > 0 ? "text-[#C1452D]" : "text-[#B8A684]"}`}>
-                            {cant}
-                          </span>
-                          <button
-                            onClick={() => agregarFondo(i, op)}
-                            className="w-6 h-6 rounded-full bg-[#C1452D] text-white flex items-center justify-center active:bg-[#a93a25]"
-                          >
-                            <Plus size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {opciones.map((op) => (
+                    <ProteinOptionRow
+                      key={op}
+                      label={op}
+                      cantidad={contarProteina(i, op)}
+                      onIncrement={() => agregarFondo(i, op)}
+                      onDecrement={() => quitarFondo(i, op)}
+                    />
+                  ))}
                 </div>
                 {selectorArroz}
                 {selectorEntradasPorUnidad}
