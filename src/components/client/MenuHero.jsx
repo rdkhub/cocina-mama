@@ -1,7 +1,8 @@
 // src/components/client/MenuHero.jsx
 import React from "react";
-import { ChefHat } from "lucide-react";
+import { ChefHat, MessageCircle } from "lucide-react";
 import { todayLabel } from "../../data";
+import { WHATSAPP_URL } from "../../utils/contacto";
 
 export function MenuHero({ menu }) {
   return (
@@ -20,9 +21,20 @@ export function MenuHero({ menu }) {
         }}
       />
       <div className="relative max-w-md mx-auto">
-        <div className="flex items-center gap-2 mb-5">
-          <ChefHat size={20} strokeWidth={1.75} color="#E0A95C" />
-          <span className="font-display text-lg tracking-wide">Cocina de Mamá</span>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <ChefHat size={20} strokeWidth={1.75} color="#E0A95C" />
+            <span className="font-display text-lg tracking-wide">Cocina de Mamá</span>
+          </div>
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-[#25D366]/15 border border-[#25D366]/40 text-[#5CE08A] text-[12px] font-medium px-2.5 py-1.5 rounded-full hover:bg-[#25D366]/25 transition"
+          >
+            <MessageCircle size={13} />
+            WhatsApp
+          </a>
         </div>
         <div
           style={{
