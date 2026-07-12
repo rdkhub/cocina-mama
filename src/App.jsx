@@ -1,92 +1,17 @@
-// src/context/AppContext.jsx
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { supabase } from "../supabaseClient";
-import { todayKey, loadMenu, saveMenu, loadOrders, createOrder, updateOrder, deleteOrder } from "../data";
+// src/App.jsx
+import React from "react";
+import { Lock, Loader2, MessageCircle } from "lucide-react";
+import { AppProvider, useApp } from "./context/AppContext";
+import { ClientView } from "./components/client/ClientView";
+import { AdminView } from "./components/admin/AdminView";
+import { PinScreen } from "./components/admin/PinScreen";
+import { WHATSAPP_URL } from "./utils/contacto";
 
-const AppContext = createContext(null);
-
-// AppProvider centraliza TODO el estado que antes vivía dentro del componente
-// App() de 1700 líneas: el menú del día, la lista de pedidos, en qué vista
-// está el usuario (cliente/pin/admin), y las funciones para crear/actualizar/
-// borrar pedidos y guardar el menú. Cualquier componente de la app puede leer
-// esto con el hook useApp() en vez de recibir 10 props distintas.
-export function AppProvider({ children }) {
-  const [menu, setMenu] = useState(null);
-  const [orders, setOrders] = useState([]);
-  const [view, setView] = useState("cliente"); // cliente | pin | admin
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [justSubmitted, setJustSubmitted] = useState(null);
-
-  const refresh = useCallback(async () => {
-    const [m, o] = await Promise.all([loadMenu(), loadOrders()]);
-    setMenu(m);
-    setOrders(o);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    refresh();
-
-    // Realtime: cuando alguien hace un pedido o se actualiza el menú,
-    // todos los que tengan la página abierta (ej. la tablet del local) lo ven al instante.
-    const ordersChannel = supabase
-      .channel("orders-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
-        refresh();
-      })
-      .subscribe();
-
-    const menuChannel = supabase
-      .channel("menu-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "menu" }, () => {
-        refresh();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(ordersChannel);
-      supabase.removeChannel(menuChannel);
-    };
-  }, [refresh]);
-
-  const handleOrderSubmit = async (data) => {
-    setSubmitting(true);
-    try {
-      const order = {
-        ...data,
-        fecha: todayKey(),
-        creadoEn: new Date().toISOString(),
-        listo: false,
-        pagado: data.pago !== "fiado",
-      };
-      const saved = await createOrder(order);
-      setOrders((prev) => [...prev, saved]);
-      setJustSubmitted(saved);
-    } catch (e) {
-      console.error("Error al crear pedido:", e);
-      alert("No se pudo enviar el pedido. Revisa tu conexión e intenta de nuevo.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleMenuSave = async (newMenu) => {
-    await saveMenu(newMenu);
-    setMenu(newMenu);
-  };
-
-  const handleOrderUpdate = async (id, patch) => {
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
-    await updateOrder(id, patch);
-  };
-
-  const handleOrderDelete = async (id) => {
-    setOrders((prev) => prev.filter((o) => o.id !== id));
-    await deleteOrder(id);
-  };
-
-  const value = {
+// AppContent lee el estado global (useApp) y decide qué pantalla mostrar.
+// Vive separado de App() porque los Context solo se pueden leer DEBAJO del
+// <AppProvider>, nunca en el mismo componente que lo declara.
+function AppContent() {
+  const {
     menu,
     orders,
     view,
@@ -99,15 +24,76 @@ export function AppProvider({ children }) {
     handleMenuSave,
     handleOrderUpdate,
     handleOrderDelete,
+  } = useApp();
+
+  if (loading || !menu) {
+    return (
+      <div className="min-h-screen bg-[#FBF6EC] flex items-center justify-center">
+        <Loader2 className="animate-spin" color="#C1452D" size={28} />
+      </div>
+    );
+  }
+
+  // El cliente nunca debe ver platos, entradas o adicionales vacíos (ej. un campo
+  // que tu mamá dejó en blanco al editar el menú). El panel admin sigue viendo todo, vacío o no.
+  const menuParaCliente = {
+    ...menu,
+    fondos: menu.fondos.filter((f) => f.nombre && f.nombre.trim() !== ""),
+    entradas: menu.entradas.filter((e) => e && e.trim() !== ""),
+    adicionales: (menu.adicionales || []).filter((a) => a.nombre && a.nombre.trim() !== ""),
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <div>
+      {view === "cliente" ? (
+        <>
+          <ClientView
+            menu={menuParaCliente}
+            onSubmit={handleOrderSubmit}
+            submitting={submitting}
+            justSubmitted={justSubmitted}
+            onReset={() => setJustSubmitted(null)}
+          />
+          {/* Botón flotante de WhatsApp: siempre visible mientras el cliente está
+              armando su pedido, como salida fácil si prefiere escribir directo
+              o tiene dudas a mitad de camino. */}
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="fixed bottom-4 left-4 bg-[#25D366] text-white rounded-full p-3 shadow-lg opacity-90 hover:opacity-100"
+            title="Escríbenos por WhatsApp"
+          >
+            <MessageCircle size={18} />
+          </a>
+          <button
+            onClick={() => setView("pin")}
+            className="fixed bottom-4 right-4 bg-[#2B2622] text-[#E0A95C] rounded-full p-3 shadow-lg opacity-70 hover:opacity-100"
+            title="Panel de administración"
+          >
+            <Lock size={18} />
+          </button>
+        </>
+      ) : view === "pin" ? (
+        <PinScreen onUnlock={() => setView("admin")} onBack={() => setView("cliente")} />
+      ) : (
+        <AdminView
+          menu={menu}
+          orders={orders}
+          onMenuSave={handleMenuSave}
+          onOrderUpdate={handleOrderUpdate}
+          onOrderDelete={handleOrderDelete}
+          onBack={() => setView("cliente")}
+        />
+      )}
+    </div>
+  );
 }
 
-// Hook para leer el contexto desde cualquier componente:
-//   const { menu, orders, view, setView } = useApp();
-export function useApp() {
-  const ctx = useContext(AppContext);
-  if (!ctx) throw new Error("useApp debe usarse dentro de un <AppProvider>");
-  return ctx;
+export default function App() {
+  return (
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
+  );
 }
