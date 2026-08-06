@@ -36,10 +36,15 @@ export function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset 
   const totalFondos = fondoQty.reduce((a, b) => a + b, 0);
   const totalEntradasExtra = entradaExtraQty.reduce((a, b) => a + b, 0);
   const precioFondoUnidad = modo === "delivery" ? PRECIO_FONDO_DELIVERY : PRECIO_FONDO_RECOJO;
+  const totalAdicionalesQty = adicionalQty.reduce((a, b) => a + b, 0);
   const totalPagar =
     totalFondos * precioFondoUnidad +
     totalEntradasExtra * PRECIO_ENTRADA_SOLA +
     (menu.adicionales || []).reduce((acc, a, i) => acc + adicionalQty[i] * a.precio, 0);
+
+  // El pedido "tiene algo" en cuanto hay al menos un ítem elegido — esto controla
+  // cuándo aparece la barra de total flotante abajo.
+  const hayAlgoElegido = totalFondos > 0 || totalEntradasExtra > 0 || totalAdicionalesQty > 0;
 
   const bump = (arr, setArr, i, delta) => {
     const copy = [...arr];
@@ -157,11 +162,11 @@ export function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset 
   }
 
   return (
-    <div className="min-h-screen bg-[#FBF6EC] pb-32">
+    <div className={`min-h-screen bg-[#FBF6EC] ${hayAlgoElegido ? "pb-24" : "pb-10"}`}>
       <MenuHero menu={menu} />
 
-      <div className="max-w-md mx-auto px-5 -mt-7 relative z-10">
-        <div className="bg-white rounded-2xl shadow-[0_8px_24px_rgba(43,38,34,0.08)] border border-[#eee2cb] p-5 mb-7">
+      <main className="max-w-md mx-auto px-5 -mt-7 relative z-10">
+        <div className="bg-white rounded-2xl shadow-floating border border-[#eee2cb] p-5 mb-7">
           <div className="flex gap-2 flex-wrap">
             <Tag color="#5C7A4F">Puedes pedir varios platos y cantidades</Tag>
           </div>
@@ -200,7 +205,7 @@ export function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset 
         />
 
         <div className="space-y-5 mt-5">
-          {(totalFondos > 0 || entradaExtraQty.some((q) => q > 0) || adicionalQty.some((q) => q > 0)) && (
+          {hayAlgoElegido && (
             <OrderSummary
               menu={menu}
               fondoSeleccion={fondoSeleccion}
@@ -221,16 +226,45 @@ export function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset 
             </div>
           )}
 
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="w-full bg-[#C1452D] hover:bg-[#a93a25] disabled:opacity-60 text-white font-medium rounded-xl py-3.5 text-[15px] transition flex items-center justify-center gap-2"
-          >
-            {submitting ? <Loader2 size={18} className="animate-spin" /> : null}
-            {submitting ? "Enviando pedido…" : "Enviar mi pedido"}
-          </button>
+          {/* Sin la barra flotante (pedido vacío todavía), se muestra un botón normal
+              al final del formulario, para que siempre haya una forma de intentar enviar. */}
+          {!hayAlgoElegido && (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full bg-[#C1452D] hover:bg-[#a93a25] disabled:opacity-60 text-white font-medium rounded-xl py-3.5 text-[15px] transition flex items-center justify-center gap-2"
+            >
+              Enviar mi pedido
+            </button>
+          )}
         </div>
-      </div>
+      </main>
+
+      {/* Barra de total flotante: aparece en cuanto hay algo elegido y se queda fija
+          abajo mientras el cliente sigue armando el pedido, para que nunca tenga que
+          scrollear para ver cuánto lleva gastado ni para enviar el pedido. */}
+      {hayAlgoElegido && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#211B16] border-t border-[#463f33]">
+          <div className="max-w-md mx-auto px-5 py-3 flex items-center gap-3">
+            <div className="flex-1">
+              <div className="text-[11px] text-[#cfc3ad] uppercase tracking-wide" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                Total
+              </div>
+              <div className="text-[#E0A95C] text-lg font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                S/ {totalPagar.toFixed(2)}
+              </div>
+            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="bg-[#C1452D] hover:bg-[#a93a25] disabled:opacity-60 text-white font-medium rounded-xl px-6 py-3 text-[15px] transition flex items-center justify-center gap-2 shrink-0"
+            >
+              {submitting ? <Loader2 size={18} className="animate-spin" /> : null}
+              {submitting ? "Enviando…" : "Enviar mi pedido"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
