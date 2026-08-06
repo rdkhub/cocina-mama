@@ -1,10 +1,12 @@
 // src/components/admin/OrderCard.jsx
-import React from "react";
+import React, { useState } from "react";
 import { Phone, Clock, Trash2, CheckCircle2, Circle, Wallet } from "lucide-react";
-import { Tag } from "../ui";
+import { Tag, ConfirmDialog } from "../ui";
 import { calcularTotal, PAY_LABELS, PAY_COLORS } from "../../utils/pedidos";
 
 export function OrderCard({ order, onUpdate, onDelete }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
   const total = typeof order.total === "number" ? order.total : calcularTotal(order.fondos, order.entradas, order.modo, order.adicionales);
 
   // Las entradas guardadas en el pedido incluyen TANTO las que vinieron incluidas
@@ -45,7 +47,11 @@ export function OrderCard({ order, onUpdate, onDelete }) {
           <div className="text-[#C1452D] font-semibold text-[15px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
             S/ {total.toFixed(2)}
           </div>
-          <button onClick={() => onDelete(order.id)} className="text-[#B8A684] hover:text-[#C1452D] p-1">
+          <button
+            onClick={() => setConfirmOpen(true)}
+            aria-label="Borrar este pedido"
+            className="text-[#B8A684] hover:text-[#C1452D] p-1"
+          >
             <Trash2 size={16} />
           </button>
         </div>
@@ -103,6 +109,19 @@ export function OrderCard({ order, onUpdate, onDelete }) {
           {order.pagado ? "Pagado" : "Debe — marcar pagado"}
         </button>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="¿Borrar este pedido?"
+        message={`Se eliminará el pedido de ${order.nombre} de forma permanente. Esta acción no se puede deshacer.`}
+        confirmLabel="Sí, borrar"
+        cancelLabel="Cancelar"
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          onDelete(order.id);
+        }}
+      />
     </div>
   );
 }
