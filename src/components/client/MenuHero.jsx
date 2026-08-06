@@ -6,7 +6,7 @@ import { WHATSAPP_URL } from "../../utils/contacto";
 
 export function MenuHero({ menu }) {
   return (
-    <div className="relative bg-gradient-to-b from-[#332A21] to-[#211B16] text-[#FBF6EC] px-5 pt-9 pb-14 overflow-hidden">
+    <header className="relative bg-gradient-to-b from-[#332A21] to-[#211B16] text-[#FBF6EC] px-5 pt-9 pb-14 overflow-hidden">
       {/* Resplandor cálido sutil, como una luz de cocina, para que el negro no se vea plano */}
       <div
         className="absolute -top-10 -right-16 w-56 h-56 rounded-full opacity-[0.18] blur-3xl pointer-events-none"
@@ -54,6 +54,6 @@ export function MenuHero({ menu }) {
         )}
         <p className="text-[#E0A95C] text-[14px]">+ Refresco: {menu.bebida}</p>
       </div>
-    </div>
+    </header>
   );
 }
