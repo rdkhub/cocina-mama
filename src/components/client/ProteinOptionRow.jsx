@@ -1,5 +1,5 @@
 // src/components/client/ProteinOptionRow.jsx
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
 // Fila de contador para UNA opción de proteína dentro de un plato de fondo
@@ -8,16 +8,21 @@ import { Minus, Plus } from "lucide-react";
 // componente para poder usar useRef y aplicar el mismo "seguro" de 250ms
 // que ya tiene QtyCard, evitando que un toque roce el botón equivocado.
 export function ProteinOptionRow({ label, cantidad, onIncrement, onDecrement }) {
+  const [pop, setPop] = useState(false);
   const lastTapRef = useRef(0);
   const guarded = (fn) => () => {
     const now = Date.now();
     if (now - lastTapRef.current < 250) return;
     lastTapRef.current = now;
     fn();
+    setPop(true);
   };
 
   return (
-    <div className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2.5">
+    <div
+      onAnimationEnd={() => setPop(false)}
+      className={`flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2.5 ${pop ? "animate-pop" : ""}`}
+    >
       <span className={`text-[13px] ${cantidad > 0 ? "font-medium text-[#2B2622]" : "text-[#6E6253]"}`}>{label}</span>
       <div className="flex items-center gap-3">
         <button
