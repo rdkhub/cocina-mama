@@ -167,7 +167,7 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
 
   return (
     <div className="min-h-screen bg-[#FBF6EC]">
-      <div className="bg-gradient-to-b from-[#332A21] to-[#211B16] text-[#FBF6EC] px-5 pt-6 pb-5">
+      <header className="bg-gradient-to-b from-[#332A21] to-[#211B16] text-[#FBF6EC] px-5 pt-6 pb-5">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button onClick={onBack} className="flex items-center gap-1.5 text-[#cfc3ad] text-sm hover:text-white">
             <ArrowLeft size={16} /> Ver como cliente
@@ -177,10 +177,10 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
             <span className="text-sm text-[#E0A95C]">Panel de mamá</span>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="max-w-3xl mx-auto px-5">
-        <div className="flex gap-1 -mt-px bg-white rounded-xl border border-[#eee2cb] p-1 mt-4 mb-5 overflow-x-auto">
+        <nav aria-label="Secciones del panel" className="flex gap-1 -mt-px bg-white rounded-xl border border-[#eee2cb] p-1 mt-4 mb-5 overflow-x-auto">
           {[
             { id: "pedidos", label: `Hoy (${todaysOrders.length})` },
             { id: "menu", label: "Menú" },
@@ -191,6 +191,7 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
+              aria-current={tab === t.id ? "page" : undefined}
               className={`flex-1 text-[13px] py-2 rounded-lg font-medium transition whitespace-nowrap ${
                 tab === t.id ? "bg-[#2B2622] text-white" : "text-[#6E6253]"
               }`}
@@ -198,8 +199,9 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
               {t.label}
             </button>
           ))}
-        </div>
+        </nav>
 
+        <main>
         {tab === "pedidos" && (
           <PedidosTab
             todaysOrders={todaysOrders}
@@ -244,6 +246,7 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
         )}
 
         {tab === "semanal" && <SemanalTab resumenSemanal={resumenSemanal} todayKey={todayKey} />}
+        </main>
       </div>
     </div>
   );
