@@ -17,6 +17,13 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [justSubmitted, setJustSubmitted] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  // Muestra un aviso breve (ej: "no se pudo guardar") que desaparece solo.
+  const showToast = useCallback((message, variant = "error") => {
+    setToast({ message, variant });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
 
   const refresh = useCallback(async () => {
     const [m, o] = await Promise.all([loadMenu(), loadOrders()]);
@@ -76,14 +83,34 @@ export function AppProvider({ children }) {
     setMenu(newMenu);
   };
 
+  // Actualiza el pedido en pantalla de inmediato (se siente instantáneo), pero
+  // si Supabase falla al guardar, REVIERTE el cambio visual y avisa — así el
+  // panel nunca muestra algo distinto a lo que realmente hay guardado.
   const handleOrderUpdate = async (id, patch) => {
+    const previous = orders;
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
-    await updateOrder(id, patch);
+    try {
+      await updateOrder(id, patch);
+    } catch (e) {
+      console.error("Error al actualizar pedido:", e);
+      setOrders(previous);
+      showToast("No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.");
+    }
   };
 
+  // Mismo patrón que handleOrderUpdate: si borrar falla en Supabase, el
+  // pedido vuelve a aparecer en la lista en vez de quedar "borrado" solo
+  // en la pantalla de quien lo intentó borrar.
   const handleOrderDelete = async (id) => {
+    const previous = orders;
     setOrders((prev) => prev.filter((o) => o.id !== id));
-    await deleteOrder(id);
+    try {
+      await deleteOrder(id);
+    } catch (e) {
+      console.error("Error al borrar pedido:", e);
+      setOrders(previous);
+      showToast("No se pudo borrar el pedido. Revisa tu conexión e intenta de nuevo.");
+    }
   };
 
   const value = {
@@ -95,6 +122,7 @@ export function AppProvider({ children }) {
     submitting,
     justSubmitted,
     setJustSubmitted,
+    toast,
     handleOrderSubmit,
     handleMenuSave,
     handleOrderUpdate,
