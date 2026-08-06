@@ -11,3 +11,4 @@ export { QtyCard } from "./QtyCard";
 export { SelectCard } from "./SelectCard";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { Toast } from "./Toast";
+export { Skeleton } from "./Skeleton";
