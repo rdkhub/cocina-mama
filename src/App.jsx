@@ -1,11 +1,11 @@
 // src/App.jsx
 import React from "react";
-import { Lock, Loader2, MessageCircle } from "lucide-react";
+import { Lock, MessageCircle } from "lucide-react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { ClientView } from "./components/client/ClientView";
 import { AdminView } from "./components/admin/AdminView";
 import { PinScreen } from "./components/admin/PinScreen";
-import { Toast } from "./components/ui";
+import { Toast, Skeleton } from "./components/ui";
 import { WHATSAPP_URL } from "./utils/contacto";
 
 // AppContent lee el estado global (useApp) y decide qué pantalla mostrar.
@@ -29,11 +29,7 @@ function AppContent() {
   } = useApp();
 
   if (loading || !menu) {
-    return (
-      <div className="min-h-screen bg-[#FBF6EC] flex items-center justify-center">
-        <Loader2 className="animate-spin" color="#C1452D" size={28} />
-      </div>
-    );
+    return <Skeleton />;
   }
 
   // El cliente nunca debe ver platos, entradas o adicionales vacíos (ej. un campo
@@ -67,7 +63,7 @@ function AppContent() {
             rel="noopener noreferrer"
             aria-label="Escríbenos por WhatsApp"
             title="Escríbenos por WhatsApp"
-            className="fixed bottom-4 left-4 bg-[#25D366] text-white rounded-full p-3 shadow-lg opacity-90 hover:opacity-100"
+            className="fixed bottom-4 left-4 bg-[#25D366] text-white rounded-full p-3 shadow-lg opacity-90 hover:opacity-100 z-50"
           >
             <MessageCircle size={18} />
           </a>
@@ -75,7 +71,7 @@ function AppContent() {
             onClick={() => setView("pin")}
             aria-label="Panel de administración"
             title="Panel de administración"
-            className="fixed bottom-4 right-4 bg-[#2B2622] text-[#E0A95C] rounded-full p-3 shadow-lg opacity-70 hover:opacity-100"
+            className="fixed bottom-4 right-4 bg-[#2B2622] text-[#E0A95C] rounded-full p-3 shadow-lg opacity-70 hover:opacity-100 z-50"
           >
             <Lock size={18} />
           </button>
