@@ -1,5 +1,5 @@
 // src/components/ui/QtyCard.jsx
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
 // Tarjeta de cantidad: botones - y + para elegir cuántas unidades de un plato.
@@ -8,6 +8,7 @@ import { Minus, Plus } from "lucide-react";
 // (item + precio + selector de cantidad), para que el costo quede clarísimo antes de tocar el "+".
 export function QtyCard({ text, qty, onChange, priceTag }) {
   const active = qty > 0;
+  const [pop, setPop] = useState(false);
 
   // Protección contra doble-toque accidental en mobile: si el dedo roza el botón
   // dos veces casi al instante (típico cuando aparece contenido nuevo justo debajo
@@ -18,13 +19,15 @@ export function QtyCard({ text, qty, onChange, priceTag }) {
     if (now - lastTapRef.current < 250) return;
     lastTapRef.current = now;
     onChange(delta);
+    setPop(true);
   };
 
   return (
     <div
+      onAnimationEnd={() => setPop(false)}
       className={`w-full rounded-xl border-2 flex items-center justify-between gap-3 px-3.5 py-2.5 transition ${
-        active ? "border-[#C1452D] bg-white shadow-[0_2px_8px_rgba(193,69,45,0.12)]" : "border-[#e8ddc8] bg-white"
-      }`}
+        active ? "border-[#C1452D] bg-white shadow-active" : "border-[#e8ddc8] bg-white"
+      } ${pop ? "animate-pop" : ""}`}
     >
       <div className="flex flex-col">
         <span className={`text-[14px] ${active ? "font-semibold text-[#2B2622]" : "text-[#5c5246]"}`}>{text}</span>
