@@ -115,7 +115,9 @@ function orderToRow(order) {
   };
 }
 
-// ---------- BIBLIOTECA DE PLATOS FRECUENTES ----------
+// ---------- BIBLIOTECA DE PLATOS ----------
+// Cada plato guarda solo su NOMBRE y si necesita elegir proteína o no —
+// nunca guarda QUÉ proteínas lleva, porque eso cambia día a día.
 export async function loadPlatosFrecuentes() {
   const { data, error } = await supabase
     .from("platos_frecuentes")
@@ -125,41 +127,44 @@ export async function loadPlatosFrecuentes() {
   return data.map((row) => ({
     id: row.id,
     nombre: row.nombre,
-    proteinas: row.proteinas ?? "",
+    requiereProteina: row.requiere_proteina ?? false,
     permiteArroz: row.permite_arroz ?? false,
   }));
 }
 
-// Guarda un plato en la biblioteca, o lo actualiza si ya existía uno con el
-// mismo nombre (sin importar mayúsculas ni espacios extra) pero con
-// proteínas distintas a las de ahora. platosExistentes es la lista ya
-// cargada en memoria, para no tener que consultar la base de datos de nuevo
-// por cada plato.
-export async function guardarPlatoFrecuente(plato, platosExistentes) {
-  const nombreLimpio = plato.nombre.trim();
-  const existente = platosExistentes.find(
-    (p) => p.nombre.trim().toLowerCase() === nombreLimpio.toLowerCase()
-  );
-
-  if (existente) {
-    const proteinasNuevas = plato.proteinas || "";
-    const permiteArrozNuevo = !!plato.permiteArroz;
-    const sinCambios = existente.proteinas === proteinasNuevas && existente.permiteArroz === permiteArrozNuevo;
-    if (sinCambios) return existente;
-
-    const { error } = await supabase
-      .from("platos_frecuentes")
-      .update({ proteinas: proteinasNuevas, permite_arroz: permiteArrozNuevo })
-      .eq("id", existente.id);
-    if (error) throw error;
-    return { ...existente, proteinas: proteinasNuevas, permiteArroz: permiteArrozNuevo };
-  }
-
+export async function crearPlatoFrecuente({ nombre, requiereProteina, permiteArroz }) {
   const { data, error } = await supabase
     .from("platos_frecuentes")
-    .insert({ nombre: nombreLimpio, proteinas: plato.proteinas || "", permite_arroz: !!plato.permiteArroz })
+    .insert({ nombre: nombre.trim(), requiere_proteina: !!requiereProteina, permite_arroz: !!permiteArroz })
     .select()
     .single();
   if (error) throw error;
-  return { id: data.id, nombre: data.nombre, proteinas: data.proteinas ?? "", permiteArroz: data.permite_arroz ?? false };
+  return {
+    id: data.id,
+    nombre: data.nombre,
+    requiereProteina: data.requiere_proteina,
+    permiteArroz: data.permite_arroz,
+  };
+}
+
+// ---------- BIBLIOTECA DE PROTEÍNAS ----------
+// Lista compartida entre todos los platos que necesiten proteína. Se elige
+// libre cada día — nunca se recuerda qué se usó la última vez para un plato.
+export async function loadProteinas() {
+  const { data, error } = await supabase
+    .from("proteinas")
+    .select("*")
+    .order("nombre", { ascending: true });
+  if (error || !data) return [];
+  return data.map((row) => ({ id: row.id, nombre: row.nombre }));
+}
+
+export async function crearProteina(nombre) {
+  const { data, error } = await supabase
+    .from("proteinas")
+    .insert({ nombre: nombre.trim() })
+    .select()
+    .single();
+  if (error) throw error;
+  return { id: data.id, nombre: data.nombre };
 }
