@@ -13,43 +13,11 @@ export const todayLabel = () => {
 };
 
 export const defaultMenu = () => ({
-  fondos: [
-    { nombre: "Arroz con pollo + papa a la huancaína", proteinas: "", permiteArroz: false },
-    { nombre: "Lomo saltado", proteinas: "", permiteArroz: false },
-  ],
+  fondos: ["Arroz con pollo + papa a la huancaína", "Lomo saltado"],
   entradas: ["Ensalada de tomate", "Ensalada de palta", "Ensalada de fideos"],
-  adicionales: [
-    { nombre: "Huevo", precio: 2 },
-    { nombre: "Plátano frito", precio: 2 },
-    { nombre: "Bistec", precio: 4 },
-    { nombre: "Milanesa", precio: 4 },
-    { nombre: "Pollo a la plancha", precio: 4 },
-  ],
   bebida: "Chicha morada",
   fecha: todayKey(),
 });
-
-// Convierte un fondo guardado en formato viejo (string simple) al formato nuevo
-// { nombre, proteinas, permiteArroz }. Si ya viene en el formato nuevo, lo deja igual.
-function normalizarFondo(f) {
-  if (typeof f === "string") return { nombre: f, proteinas: "", permiteArroz: false };
-  return {
-    nombre: f?.nombre ?? "",
-    proteinas: f?.proteinas ?? "",
-    permiteArroz: f?.permiteArroz ?? false,
-  };
-}
-
-function normalizarFondos(fondos) {
-  return (fondos ?? defaultMenu().fondos).map(normalizarFondo);
-}
-
-// Normaliza adicionales: si no existen aún (menú guardado antes de esta función),
-// usa la lista por defecto en vez de dejarlo vacío.
-function normalizarAdicionales(adicionales) {
-  if (!adicionales || !Array.isArray(adicionales)) return defaultMenu().adicionales;
-  return adicionales.map((a) => ({ nombre: a?.nombre ?? "", precio: Number(a?.precio) || 0 }));
-}
 
 // ---------- MENÚ ----------
 // Hay una sola fila en la tabla "menu" con id = 1, que siempre se actualiza (upsert).
@@ -57,9 +25,8 @@ export async function loadMenu() {
   const { data, error } = await supabase.from("menu").select("*").eq("id", 1).maybeSingle();
   if (error || !data) return defaultMenu();
   return {
-    fondos: normalizarFondos(data.fondos),
+    fondos: data.fondos ?? defaultMenu().fondos,
     entradas: data.entradas ?? defaultMenu().entradas,
-    adicionales: normalizarAdicionales(data.adicionales),
     bebida: data.bebida ?? defaultMenu().bebida,
     fecha: data.fecha ?? todayKey(),
   };
@@ -70,7 +37,6 @@ export async function saveMenu(menu) {
     id: 1,
     fondos: menu.fondos,
     entradas: menu.entradas,
-    adicionales: menu.adicionales,
     bebida: menu.bebida,
     fecha: menu.fecha ?? todayKey(),
   });
@@ -111,9 +77,6 @@ export async function deleteOrder(id) {
 }
 
 // Convierte una fila de la tabla "orders" (snake_case) al formato que usa la app (camelCase)
-// Nota: cada item de "fondos" puede incluir { nombre, cantidad, proteina } cuando el cliente
-// elige una proteína específica para ese plato. Como "fondos" es una columna jsonb, no se
-// necesita ningún cambio en la base de datos para soportar este campo nuevo.
 function rowToOrder(row) {
   return {
     id: row.id,
@@ -121,7 +84,6 @@ function rowToOrder(row) {
     telefono: row.telefono,
     fondos: row.fondos ?? [],
     entradas: row.entradas ?? [],
-    adicionales: row.adicionales ?? [],
     bebida: row.bebida ?? null,
     modo: row.modo,
     direccion: row.direccion ?? "",
@@ -131,7 +93,6 @@ function rowToOrder(row) {
     creadoEn: row.creado_en,
     listo: row.listo,
     pagado: row.pagado,
-    total: row.total != null ? Number(row.total) : 0,
   };
 }
 
@@ -142,7 +103,6 @@ function orderToRow(order) {
     telefono: order.telefono,
     fondos: order.fondos,
     entradas: order.entradas,
-    adicionales: order.adicionales,
     bebida: order.bebida,
     modo: order.modo,
     direccion: order.direccion,
@@ -152,6 +112,54 @@ function orderToRow(order) {
     creado_en: order.creadoEn,
     listo: order.listo,
     pagado: order.pagado,
-    total: order.total,
   };
+}
+
+// ---------- BIBLIOTECA DE PLATOS FRECUENTES ----------
+export async function loadPlatosFrecuentes() {
+  const { data, error } = await supabase
+    .from("platos_frecuentes")
+    .select("*")
+    .order("nombre", { ascending: true });
+  if (error || !data) return [];
+  return data.map((row) => ({
+    id: row.id,
+    nombre: row.nombre,
+    proteinas: row.proteinas ?? "",
+    permiteArroz: row.permite_arroz ?? false,
+  }));
+}
+
+// Guarda un plato en la biblioteca, o lo actualiza si ya existía uno con el
+// mismo nombre (sin importar mayúsculas ni espacios extra) pero con
+// proteínas distintas a las de ahora. platosExistentes es la lista ya
+// cargada en memoria, para no tener que consultar la base de datos de nuevo
+// por cada plato.
+export async function guardarPlatoFrecuente(plato, platosExistentes) {
+  const nombreLimpio = plato.nombre.trim();
+  const existente = platosExistentes.find(
+    (p) => p.nombre.trim().toLowerCase() === nombreLimpio.toLowerCase()
+  );
+
+  if (existente) {
+    const proteinasNuevas = plato.proteinas || "";
+    const permiteArrozNuevo = !!plato.permiteArroz;
+    const sinCambios = existente.proteinas === proteinasNuevas && existente.permiteArroz === permiteArrozNuevo;
+    if (sinCambios) return existente;
+
+    const { error } = await supabase
+      .from("platos_frecuentes")
+      .update({ proteinas: proteinasNuevas, permite_arroz: permiteArrozNuevo })
+      .eq("id", existente.id);
+    if (error) throw error;
+    return { ...existente, proteinas: proteinasNuevas, permiteArroz: permiteArrozNuevo };
+  }
+
+  const { data, error } = await supabase
+    .from("platos_frecuentes")
+    .insert({ nombre: nombreLimpio, proteinas: plato.proteinas || "", permite_arroz: !!plato.permiteArroz })
+    .select()
+    .single();
+  if (error) throw error;
+  return { id: data.id, nombre: data.nombre, proteinas: data.proteinas ?? "", permiteArroz: data.permite_arroz ?? false };
 }
