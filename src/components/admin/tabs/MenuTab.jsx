@@ -3,74 +3,33 @@ import React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Field, inputStyle } from "../../ui";
 import { AvisoGenerator } from "../AvisoGenerator";
-import { PlatoFrecuenteChips } from "../PlatoFrecuenteChips";
+import { PlatoChecklist } from "../PlatoChecklist";
 
 export function MenuTab({
   draft,
   setDraft,
   updateList,
-  updateFondo,
-  agregarFondoMenu,
-  quitarFondoMenu,
   saveMenuDraft,
   savedFlash,
-  platosFrecuentes,
-  onAgregarDesdeBiblioteca,
+  platosLibrary,
+  proteinasLibrary,
+  onToggleDish,
+  onToggleProtein,
+  onCrearPlato,
+  onCrearProteina,
 }) {
   return (
     <div className="space-y-5 pb-10">
-      <Field label="Platos de fondo">
-        <PlatoFrecuenteChips platos={platosFrecuentes} onSelect={onAgregarDesdeBiblioteca} />
-        <div className="space-y-3">
-          {draft.fondos.map((fondo, idx) => (
-            <div key={idx} className="rounded-xl border border-[#e8ddc8] bg-white p-3.5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span
-                  className="text-[11px] uppercase tracking-wide text-[#9C7A3C]"
-                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                >
-                  Plato {idx + 1}
-                </span>
-                {draft.fondos.length > 1 && (
-                  <button
-                    onClick={() => quitarFondoMenu(idx)}
-                    className="text-[#C1452D] hover:bg-[#C1452D]/8 rounded-lg p-1.5"
-                    title="Quitar este plato"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                )}
-              </div>
-              <input
-                className={inputStyle}
-                value={fondo.nombre || ""}
-                onChange={(e) => updateFondo(idx, "nombre", e.target.value)}
-                placeholder="Nombre del plato"
-              />
-              <input
-                className={inputStyle}
-                value={fondo.proteinas || ""}
-                onChange={(e) => updateFondo(idx, "proteinas", e.target.value)}
-                placeholder="Opciones de proteína (opcional, separadas por coma)"
-              />
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={fondo.permiteArroz || false}
-                  onChange={(e) => updateFondo(idx, "permiteArroz", e.target.checked)}
-                  className="w-4 h-4 accent-[#C1452D]"
-                />
-                <span className="text-[13px] text-[#6b5f52]">Se puede pedir con o sin arroz</span>
-              </label>
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={agregarFondoMenu}
-          className="mt-2 text-[13px] text-[#5C7A4F] font-medium flex items-center gap-1 hover:underline"
-        >
-          <Plus size={14} /> Agregar otro plato de fondo
-        </button>
+      <Field label="Platos de fondo — elige los de hoy">
+        <PlatoChecklist
+          platosLibrary={platosLibrary}
+          proteinasLibrary={proteinasLibrary}
+          fondosSeleccionados={draft.fondos}
+          onToggleDish={onToggleDish}
+          onToggleProtein={onToggleProtein}
+          onCrearPlato={onCrearPlato}
+          onCrearProteina={onCrearProteina}
+        />
       </Field>
 
       <Field label="Entradas del día">
