@@ -25,6 +25,26 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
   const [platosLibrary, setPlatosLibrary] = useState([]);
   const [proteinasLibrary, setProteinasLibrary] = useState([]);
 
+  // Une cualquier plato duplicado (mismo platoId, o mismo nombre si es un
+  // registro viejo sin platoId) en un solo renglón, combinando sus
+  // proteínas. Esto limpia solo cualquier duplicado que haya quedado
+  // guardado de antes, cada vez que se abre la pestaña o se guarda.
+  const deduplicarFondos = (fondos) => {
+    const porClave = new Map();
+    fondos.forEach((f) => {
+      const clave = f.platoId || f.nombre;
+      if (!porClave.has(clave)) {
+        porClave.set(clave, { ...f });
+      } else {
+        const existente = porClave.get(clave);
+        const proteinasExistentes = existente.proteinas ? existente.proteinas.split(",").map((p) => p.trim()).filter(Boolean) : [];
+        const proteinasNuevas = f.proteinas ? f.proteinas.split(",").map((p) => p.trim()).filter(Boolean) : [];
+        existente.proteinas = Array.from(new Set([...proteinasExistentes, ...proteinasNuevas])).join(", ");
+      }
+    });
+    return Array.from(porClave.values());
+  };
+
   // Recuerda la última fecha de menú que ya procesamos, para NO resetear el
   // borrador cada vez que llega una actualización en tiempo real (ej. un
   // pedido nuevo) — eso antes pisaba lo que se estaba armando a medio camino.
@@ -37,7 +57,7 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
       if (menu.fecha && menu.fecha !== todayKey()) {
         setDraft({ ...menu, fondos: [] });
       } else {
-        setDraft(menu);
+        setDraft({ ...menu, fondos: deduplicarFondos(menu.fondos) });
       }
       lastFechaRef.current = menu.fecha;
       return;
@@ -150,7 +170,9 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
 
   const saveMenuDraft = async () => {
     try {
-      await onMenuSave({ ...draft, fecha: todayKey() });
+      const fondosLimpios = deduplicarFondos(draft.fondos);
+      await onMenuSave({ ...draft, fondos: fondosLimpios, fecha: todayKey() });
+      setDraft((prev) => ({ ...prev, fondos: fondosLimpios }));
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1800);
     } catch (e) {
