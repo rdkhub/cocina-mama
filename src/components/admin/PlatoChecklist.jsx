@@ -25,10 +25,11 @@ export function PlatoChecklist({
   const [agregandoProteinaA, setAgregandoProteinaA] = useState(null);
   const [nuevaProteinaNombre, setNuevaProteinaNombre] = useState("");
 
-  // Encuentra si un plato ya está en el menú de hoy. Compara por ID
-  // (platoId), no por el texto del nombre — así nunca se duplica por un
-  // espacio o mayúscula de más entre lo guardado y lo de la biblioteca.
-  const seleccionado = (plato) => fondosSeleccionados.find((f) => (f.platoId ? f.platoId === plato.id : f.nombre === plato.nombre));
+  // Encuentra si un plato ya está en el menú de hoy, comparando el nombre
+  // SIN espacios de más ni importar mayúsculas — así atrapa cualquier plato
+  // viejo que haya quedado guardado con un espacio extra invisible.
+  const normalizar = (nombre) => (nombre || "").trim().toLowerCase();
+  const seleccionado = (plato) => fondosSeleccionados.find((f) => normalizar(f.nombre) === normalizar(plato.nombre));
   const proteinasDe = (plato) => {
     const f = seleccionado(plato);
     if (!f || !f.proteinas) return [];
