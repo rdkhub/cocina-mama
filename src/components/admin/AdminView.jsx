@@ -1,6 +1,7 @@
 // src/components/admin/AdminView.jsx
 import React, { useState, useEffect } from "react";
 import { Lock, ArrowLeft } from "lucide-react";
+import { useApp } from "../../context/AppContext";
 import { todayKey, todayLabel } from "../../data";
 import { calcularTotal } from "../../utils/pedidos";
 import { PedidosTab } from "./tabs/PedidosTab";
@@ -14,6 +15,7 @@ import { SemanalTab } from "./tabs/SemanalTab";
 // de historial, y todos los cálculos derivados (deudas, resumen semanal,
 // etc.). Cada pestaña (PedidosTab, MenuTab, ...) es presentacional.
 export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDelete, onBack }) {
+  const { showToast } = useApp();
   const [tab, setTab] = useState("pedidos"); // pedidos | menu | deudas | historial | semanal
   const [draft, setDraft] = useState(menu);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -60,9 +62,14 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
   };
 
   const saveMenuDraft = async () => {
-    await onMenuSave({ ...draft, fecha: todayKey() });
-    setSavedFlash(true);
-    setTimeout(() => setSavedFlash(false), 1800);
+    try {
+      await onMenuSave({ ...draft, fecha: todayKey() });
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 1800);
+    } catch (e) {
+      console.error("Error al guardar el menú:", e);
+      showToast("No se pudo guardar el menú. Revisa tu conexión e intenta de nuevo.");
+    }
   };
 
   // Deudas: agrupar por cliente (nombre + telefono) sumando pedidos con pago === fiado y no pagados
@@ -179,8 +186,16 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-5">
-        <nav aria-label="Secciones del panel" className="flex gap-1 -mt-px bg-white rounded-xl border border-[#eee2cb] p-1 mt-4 mb-5 overflow-x-auto">
+      {/* max-w-5xl (antes 3xl) y md:flex: en mobile, la navegación es una barra
+          horizontal arriba (como antes). Desde tablet en adelante (md:), se
+          convierte en una barra lateral fija a la izquierda del contenido —
+          aprovecha el espacio horizontal de una tablet en el local en vez de
+          desperdiciarlo con pestañas angostas arriba. */}
+      <div className="max-w-5xl mx-auto px-5 md:flex md:gap-6 md:items-start">
+        <nav
+          aria-label="Secciones del panel"
+          className="flex gap-1 -mt-px bg-white rounded-xl border border-[#eee2cb] p-1 mt-4 mb-5 overflow-x-auto md:flex-col md:w-48 md:shrink-0 md:mb-0 md:sticky md:top-4 md:overflow-visible"
+        >
           {[
             { id: "pedidos", label: `Hoy (${todaysOrders.length})` },
             { id: "menu", label: "Menú" },
@@ -192,8 +207,8 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
               key={t.id}
               onClick={() => setTab(t.id)}
               aria-current={tab === t.id ? "page" : undefined}
-              className={`flex-1 text-[13px] py-2 rounded-lg font-medium transition whitespace-nowrap ${
-                tab === t.id ? "bg-[#2B2622] text-white" : "text-[#6E6253]"
+              className={`flex-1 md:flex-none md:w-full text-center md:text-left text-[13px] md:text-[14px] py-2 md:py-2.5 md:px-3 rounded-lg font-medium transition whitespace-nowrap ${
+                tab === t.id ? "bg-[#2B2622] text-white" : "text-[#6E6253] hover:bg-[#FBF6EC]"
               }`}
             >
               {t.label}
@@ -201,7 +216,7 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
           ))}
         </nav>
 
-        <main>
+        <main className="min-w-0 flex-1">
         {tab === "pedidos" && (
           <PedidosTab
             todaysOrders={todaysOrders}
