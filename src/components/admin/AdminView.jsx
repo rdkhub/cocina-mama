@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Lock, ArrowLeft } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { todayKey, todayLabel } from "../../data";
+import { todayKey, todayLabel, loadPlatosFrecuentes, guardarPlatoFrecuente } from "../../data";
 import { calcularTotal } from "../../utils/pedidos";
 import { PedidosTab } from "./tabs/PedidosTab";
 import { MenuTab } from "./tabs/MenuTab";
@@ -22,8 +22,24 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
   const [fechaHistorial, setFechaHistorial] = useState(todayKey());
   const [modoHistorial, setModoHistorial] = useState("fecha"); // fecha | cliente
   const [busquedaCliente, setBusquedaCliente] = useState("");
+  const [platosFrecuentes, setPlatosFrecuentes] = useState([]);
 
   useEffect(() => setDraft(menu), [menu]);
+
+  // Carga la biblioteca de platos frecuentes una sola vez al entrar al panel.
+  useEffect(() => {
+    loadPlatosFrecuentes().then(setPlatosFrecuentes);
+  }, []);
+
+  // Agrega un plato de la biblioteca al menú de hoy, ya con su nombre y
+  // proteínas listos — así no hay que volver a escribir nada para un plato
+  // que ya se usó antes.
+  const agregarFondoDesdeBiblioteca = (plato) => {
+    setDraft({
+      ...draft,
+      fondos: [...draft.fondos, { nombre: plato.nombre, proteinas: plato.proteinas || "", permiteArroz: !!plato.permiteArroz }],
+    });
+  };
 
   // Un pedido se considera "de prueba" si su nombre contiene la palabra PRUEBA
   // (sin importar mayúsculas/minúsculas). Estos pedidos siguen viéndose en
@@ -66,6 +82,21 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
       await onMenuSave({ ...draft, fecha: todayKey() });
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1800);
+
+      // Guarda automáticamente en la biblioteca cualquier plato nuevo (o con
+      // proteínas actualizadas) que se haya usado en este menú, para que la
+      // próxima vez aparezca como opción rápida. No requiere ninguna acción
+      // extra de quien edita el menú.
+      const platosValidos = draft.fondos.filter((f) => f.nombre && f.nombre.trim() !== "");
+      let listaActualizada = platosFrecuentes;
+      for (const plato of platosValidos) {
+        const guardado = await guardarPlatoFrecuente(plato, listaActualizada);
+        const yaEstaba = listaActualizada.some((p) => p.id === guardado.id);
+        listaActualizada = yaEstaba
+          ? listaActualizada.map((p) => (p.id === guardado.id ? guardado : p))
+          : [...listaActualizada, guardado];
+      }
+      setPlatosFrecuentes(listaActualizada);
     } catch (e) {
       console.error("Error al guardar el menú:", e);
       showToast("No se pudo guardar el menú. Revisa tu conexión e intenta de nuevo.");
@@ -236,6 +267,8 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
             quitarFondoMenu={quitarFondoMenu}
             saveMenuDraft={saveMenuDraft}
             savedFlash={savedFlash}
+            platosFrecuentes={platosFrecuentes}
+            onAgregarDesdeBiblioteca={agregarFondoDesdeBiblioteca}
           />
         )}
 
