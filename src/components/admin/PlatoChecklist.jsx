@@ -25,9 +25,12 @@ export function PlatoChecklist({
   const [agregandoProteinaA, setAgregandoProteinaA] = useState(null);
   const [nuevaProteinaNombre, setNuevaProteinaNombre] = useState("");
 
-  const seleccionado = (nombre) => fondosSeleccionados.find((f) => f.nombre === nombre);
-  const proteinasDe = (nombre) => {
-    const f = seleccionado(nombre);
+  // Encuentra si un plato ya está en el menú de hoy. Compara por ID
+  // (platoId), no por el texto del nombre — así nunca se duplica por un
+  // espacio o mayúscula de más entre lo guardado y lo de la biblioteca.
+  const seleccionado = (plato) => fondosSeleccionados.find((f) => (f.platoId ? f.platoId === plato.id : f.nombre === plato.nombre));
+  const proteinasDe = (plato) => {
+    const f = seleccionado(plato);
     if (!f || !f.proteinas) return [];
     return f.proteinas.split(",").map((p) => p.trim()).filter(Boolean);
   };
@@ -57,7 +60,7 @@ export function PlatoChecklist({
       )}
 
       {platosLibrary.map((plato) => {
-        const activo = !!seleccionado(plato.nombre);
+        const activo = !!seleccionado(plato);
 
         if (!plato.requiereProteina) {
           return (
@@ -79,7 +82,7 @@ export function PlatoChecklist({
         }
 
         const abierto = expandido === plato.id;
-        const proteinasElegidas = proteinasDe(plato.nombre);
+        const proteinasElegidas = proteinasDe(plato);
 
         return (
           <div key={plato.id} className={`rounded-xl border-2 bg-white overflow-hidden transition ${activo ? "border-terracota" : "border-arena"}`}>
