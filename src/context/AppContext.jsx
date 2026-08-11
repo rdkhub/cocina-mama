@@ -18,8 +18,15 @@ export function AppProvider({ children }) {
   const [submitting, setSubmitting] = useState(false);
   const [justSubmitted, setJustSubmitted] = useState(null);
   const [toast, setToast] = useState(null);
+  // Texto que se anuncia a lectores de pantalla cuando llega un pedido nuevo
+  // por Supabase realtime (ej: en la tablet del local). Vive en un elemento
+  // visualmente oculto (sr-only) en App.jsx.
+  const [announcement, setAnnouncement] = useState("");
 
   // Muestra un aviso breve (ej: "no se pudo guardar") que desaparece solo.
+  // Es EL único mecanismo de aviso de la app — antes el envío de pedido usaba
+  // alert() del navegador mientras el resto usaba este toast; ahora todo pasa
+  // por el mismo lugar, para que la experiencia sea consistente.
   const showToast = useCallback((message, variant = "error") => {
     setToast({ message, variant });
     setTimeout(() => setToast(null), 3500);
@@ -39,7 +46,10 @@ export function AppProvider({ children }) {
     // todos los que tengan la página abierta (ej. la tablet del local) lo ven al instante.
     const ordersChannel = supabase
       .channel("orders-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
+        if (payload.eventType === "INSERT" && payload.new?.nombre) {
+          setAnnouncement(`Nuevo pedido de ${payload.new.nombre}`);
+        }
         refresh();
       })
       .subscribe();
@@ -72,7 +82,7 @@ export function AppProvider({ children }) {
       setJustSubmitted(saved);
     } catch (e) {
       console.error("Error al crear pedido:", e);
-      alert("No se pudo enviar el pedido. Revisa tu conexión e intenta de nuevo.");
+      showToast("No se pudo enviar el pedido. Revisa tu conexión e intenta de nuevo.");
     } finally {
       setSubmitting(false);
     }
@@ -123,6 +133,8 @@ export function AppProvider({ children }) {
     justSubmitted,
     setJustSubmitted,
     toast,
+    showToast,
+    announcement,
     handleOrderSubmit,
     handleMenuSave,
     handleOrderUpdate,
