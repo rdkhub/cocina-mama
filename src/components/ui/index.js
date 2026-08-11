@@ -12,3 +12,4 @@ export { SelectCard } from "./SelectCard";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { Toast } from "./Toast";
 export { Skeleton } from "./Skeleton";
+export { inputStyle } from "./inputStyle";
