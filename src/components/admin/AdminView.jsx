@@ -1,5 +1,5 @@
 // src/components/admin/AdminView.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Lock, ArrowLeft } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { todayKey, todayLabel, loadPlatosFrecuentes, crearPlatoFrecuente, loadProteinas, crearProteina } from "../../data";
@@ -25,15 +25,28 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
   const [platosLibrary, setPlatosLibrary] = useState([]);
   const [proteinasLibrary, setProteinasLibrary] = useState([]);
 
-  // Cuando el menú guardado es de un día distinto a hoy, el borrador arranca
-  // con los platos de fondo EN BLANCO — el menú de hoy se arma de cero cada
-  // día, no se hereda el de ayer. Si ya se editó algo hoy mismo, se sigue
-  // mostrando tal cual (para no perder cambios a mitad de edición).
+  // Recuerda la última fecha de menú que ya procesamos, para NO resetear el
+  // borrador cada vez que llega una actualización en tiempo real (ej. un
+  // pedido nuevo) — eso antes pisaba lo que se estaba armando a medio camino.
+  // Solo actúa cuando la fecha del menú guardado realmente cambia.
+  const lastFechaRef = useRef(undefined);
+
   useEffect(() => {
-    if (menu.fecha && menu.fecha !== todayKey()) {
-      setDraft({ ...menu, fondos: [] });
-    } else {
-      setDraft(menu);
+    if (lastFechaRef.current === undefined) {
+      // Primera carga del panel.
+      if (menu.fecha && menu.fecha !== todayKey()) {
+        setDraft({ ...menu, fondos: [] });
+      } else {
+        setDraft(menu);
+      }
+      lastFechaRef.current = menu.fecha;
+      return;
+    }
+    if (menu.fecha !== lastFechaRef.current) {
+      lastFechaRef.current = menu.fecha;
+      if (menu.fecha && menu.fecha !== todayKey()) {
+        setDraft({ ...menu, fondos: [] });
+      }
     }
   }, [menu]);
 
@@ -43,15 +56,24 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
     loadProteinas().then(setProteinasLibrary);
   }, []);
 
+  // Encuentra si un plato de la biblioteca ya está en el menú de hoy.
+  // Compara por ID (platoId), NUNCA por el texto del nombre — comparar por
+  // texto es frágil (un espacio o mayúscula de más ya los hace ver como
+  // "distintos" y duplica el plato en vez de reconocerlo). Los fondos viejos
+  // que no tengan platoId (de antes de este cambio) usan el nombre como
+  // respaldo, para no romper menús ya guardados.
+  const encontrarFondo = (plato) =>
+    draft.fondos.find((f) => (f.platoId ? f.platoId === plato.id : f.nombre === plato.nombre));
+
   // Agrega o quita un plato SIN proteína del menú de hoy con un solo toque.
   const handleToggleDish = (plato) => {
-    const yaEsta = draft.fondos.some((f) => f.nombre === plato.nombre);
-    if (yaEsta) {
-      setDraft({ ...draft, fondos: draft.fondos.filter((f) => f.nombre !== plato.nombre) });
+    const existente = encontrarFondo(plato);
+    if (existente) {
+      setDraft({ ...draft, fondos: draft.fondos.filter((f) => f !== existente) });
     } else {
       setDraft({
         ...draft,
-        fondos: [...draft.fondos, { nombre: plato.nombre, proteinas: "", permiteArroz: plato.permiteArroz || false }],
+        fondos: [...draft.fondos, { platoId: plato.id, nombre: plato.nombre, proteinas: "", permiteArroz: plato.permiteArroz || false }],
       });
     }
   };
@@ -61,25 +83,25 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
   // si se desmarca la última, el plato se quita del menú de hoy. Nunca
   // recuerda lo elegido un día anterior — siempre parte de cero.
   const handleToggleProtein = (plato, proteinaNombre) => {
-    const existente = draft.fondos.find((f) => f.nombre === plato.nombre);
+    const existente = encontrarFondo(plato);
     const actuales = existente && existente.proteinas ? existente.proteinas.split(",").map((p) => p.trim()).filter(Boolean) : [];
     const yaMarcada = actuales.includes(proteinaNombre);
     const nuevas = yaMarcada ? actuales.filter((p) => p !== proteinaNombre) : [...actuales, proteinaNombre];
 
     if (nuevas.length === 0) {
-      setDraft({ ...draft, fondos: draft.fondos.filter((f) => f.nombre !== plato.nombre) });
+      setDraft({ ...draft, fondos: draft.fondos.filter((f) => f !== existente) });
       return;
     }
 
     if (existente) {
       setDraft({
         ...draft,
-        fondos: draft.fondos.map((f) => (f.nombre === plato.nombre ? { ...f, proteinas: nuevas.join(", ") } : f)),
+        fondos: draft.fondos.map((f) => (f === existente ? { ...f, proteinas: nuevas.join(", ") } : f)),
       });
     } else {
       setDraft({
         ...draft,
-        fondos: [...draft.fondos, { nombre: plato.nombre, proteinas: nuevas.join(", "), permiteArroz: plato.permiteArroz || false }],
+        fondos: [...draft.fondos, { platoId: plato.id, nombre: plato.nombre, proteinas: nuevas.join(", "), permiteArroz: plato.permiteArroz || false }],
       });
     }
   };
