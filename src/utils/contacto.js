@@ -8,3 +8,6 @@ export const WHATSAPP_NUMBER = "51998869843";
 // Enlace que abre WhatsApp directo con este número, sin mensaje pre-escrito
 // (el cliente escribe lo que quiera).
 export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`;
+
+// URL pública de la app, para incluirla en el aviso del menú del día.
+export const APP_URL = "https://cocina-mama-roan.vercel.app/";
