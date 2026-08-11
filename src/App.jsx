@@ -22,6 +22,7 @@ function AppContent() {
     justSubmitted,
     setJustSubmitted,
     toast,
+    announcement,
     handleOrderSubmit,
     handleMenuSave,
     handleOrderUpdate,
@@ -44,6 +45,11 @@ function AppContent() {
   return (
     <div>
       <Toast toast={toast} />
+      {/* Región invisible para lectores de pantalla: anuncia cuando llega un
+          pedido nuevo por realtime, ej. en la tablet del local. */}
+      <div aria-live="polite" className="sr-only">
+        {announcement}
+      </div>
 
       {view === "cliente" ? (
         <>
