@@ -1,165 +1,232 @@
-// src/components/admin/tabs/MenuTab.jsx
+// src/components/client/OrderForm.jsx
 import React from "react";
-import { Plus, Trash2 } from "lucide-react";
-import { Field } from "../../ui";
+import { Field, QtyCard, SelectCard, inputStyle } from "../ui";
+import { Store, MapPin } from "lucide-react";
+import { PAY_LABELS } from "../../utils/pedidos";
+import { ProteinOptionRow } from "./ProteinOptionRow";
 
-// NOTA: este inputStyle es el mismo que usa OrderForm.jsx. Está duplicado a
-// propósito para no acoplar el panel de admin con el flujo de cliente — en la
-// Fase 2 (pulido de UX) lo podemos mover a un solo lugar compartido si tiene sentido.
-const inputStyle =
-  "w-full rounded-lg border border-[#dccdb4] bg-[#FFFDF8] px-3.5 py-2.5 text-[15px] text-[#2B2622] placeholder-[#998C76] outline-none focus:border-[#C1452D] focus:ring-2 focus:ring-[#C1452D]/15 transition";
-
-export function MenuTab({ draft, setDraft, updateList, updateFondo, agregarFondoMenu, quitarFondoMenu, saveMenuDraft, savedFlash }) {
+// Formulario principal donde el cliente arma su pedido. Recibe TODO el estado
+// y los manejadores de eventos como props desde ClientView (el componente
+// "contenedor" que guarda el estado real). Esto mantiene OrderForm como un
+// componente puramente presentacional: fácil de leer, fácil de testear.
+export function OrderForm({
+  menu,
+  nombre,
+  setNombre,
+  telefono,
+  setTelefono,
+  fondoSeleccion,
+  fondoQty,
+  arrozElegido,
+  setArrozElegido,
+  entradaExtraQty,
+  setEntradaExtraQty,
+  adicionalQty,
+  setAdicionalQty,
+  modo,
+  setModo,
+  direccion,
+  setDireccion,
+  pago,
+  setPago,
+  notas,
+  setNotas,
+  opcionesProteina,
+  agregarFondo,
+  quitarFondo,
+  contarProteina,
+  elegirEntradaDeUnidad,
+  bump,
+}) {
   return (
-    <div className="space-y-5 pb-10">
-      <Field label="Platos de fondo">
-        <div className="space-y-3">
-          {draft.fondos.map((fondo, idx) => (
-            <div key={idx} className="rounded-xl border border-[#e8ddc8] bg-white p-3.5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span
-                  className="text-[11px] uppercase tracking-wide text-[#9C7A3C]"
-                  style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                >
-                  Plato {idx + 1}
-                </span>
-                {draft.fondos.length > 1 && (
-                  <button
-                    onClick={() => quitarFondoMenu(idx)}
-                    className="text-[#C1452D] hover:bg-[#C1452D]/8 rounded-lg p-1.5"
-                    title="Quitar este plato"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                )}
-              </div>
-              <input
-                className={inputStyle}
-                value={fondo.nombre || ""}
-                onChange={(e) => updateFondo(idx, "nombre", e.target.value)}
-                placeholder="Nombre del plato"
-              />
-              <input
-                className={inputStyle}
-                value={fondo.proteinas || ""}
-                onChange={(e) => updateFondo(idx, "proteinas", e.target.value)}
-                placeholder="Opciones de proteína (opcional, separadas por coma)"
-              />
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={fondo.permiteArroz || false}
-                  onChange={(e) => updateFondo(idx, "permiteArroz", e.target.checked)}
-                  className="w-4 h-4 accent-[#C1452D]"
-                />
-                <span className="text-[13px] text-[#6b5f52]">Se puede pedir con o sin arroz</span>
-              </label>
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={agregarFondoMenu}
-          className="mt-2 text-[13px] text-[#5C7A4F] font-medium flex items-center gap-1 hover:underline"
-        >
-          <Plus size={14} /> Agregar otro plato de fondo
-        </button>
-      </Field>
-
-      <Field label="Entradas del día">
+    <div className="space-y-5">
+      <Field label="Platos de fondo (elige cantidad de cada uno)">
         <div className="space-y-2">
-          {draft.entradas.map((entrada, idx) => (
-            <div key={idx} className="flex gap-2">
-              <input
-                className={inputStyle}
-                value={entrada}
-                onChange={(e) => updateList("entradas", idx, e.target.value)}
-                placeholder={`Entrada ${idx + 1}`}
-              />
-              <button
-                onClick={() => {
-                  const copy = draft.entradas.filter((_, i) => i !== idx);
-                  setDraft({ ...draft, entradas: copy });
-                }}
-                className="shrink-0 w-10 rounded-lg border border-[#e8ddc8] text-[#C1452D] flex items-center justify-center hover:bg-[#C1452D]/8"
-                title="Quitar esta entrada"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={() => setDraft({ ...draft, entradas: [...draft.entradas, ""] })}
-          className="mt-2 text-[13px] text-[#5C7A4F] font-medium flex items-center gap-1 hover:underline"
-        >
-          <Plus size={14} /> Agregar otra entrada
-        </button>
-      </Field>
-
-      <Field label="Adicionales (con precio cada uno)">
-        <div className="space-y-2">
-          {(draft.adicionales || []).map((ad, idx) => (
-            <div key={idx} className="flex gap-2">
-              <input
-                className={inputStyle}
-                value={ad.nombre}
-                onChange={(e) => {
-                  const copy = draft.adicionales.map((a, i) => (i === idx ? { ...a, nombre: e.target.value } : a));
-                  setDraft({ ...draft, adicionales: copy });
-                }}
-                placeholder="Ej: Huevo"
-              />
-              <div className="flex items-center shrink-0 gap-1">
-                <span className="text-[13px] text-[#6E6253]">S/</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  className={`${inputStyle} w-20`}
-                  value={ad.precio}
-                  onChange={(e) => {
-                    const copy = draft.adicionales.map((a, i) =>
-                      i === idx ? { ...a, precio: Number(e.target.value) || 0 } : a
-                    );
-                    setDraft({ ...draft, adicionales: copy });
+          {menu.fondos.map((f, i) => {
+            const opciones = opcionesProteina(i);
+            const selectorArroz = f.permiteArroz && fondoQty[i] > 0 && (
+              <div className="grid grid-cols-2 gap-1.5 mt-3">
+                <button
+                  onClick={() => {
+                    const copy = [...arrozElegido];
+                    copy[i] = "con";
+                    setArrozElegido(copy);
                   }}
-                />
+                  className={`text-[13px] py-1.5 rounded-lg border-2 transition ${
+                    arrozElegido[i] === "con"
+                      ? "border-[#C1452D] bg-white font-semibold text-[#2B2622]"
+                      : "border-[#e8ddc8] bg-white text-[#5c5246]"
+                  }`}
+                >
+                  Con arroz
+                </button>
+                <button
+                  onClick={() => {
+                    const copy = [...arrozElegido];
+                    copy[i] = "sin";
+                    setArrozElegido(copy);
+                  }}
+                  className={`text-[13px] py-1.5 rounded-lg border-2 transition ${
+                    arrozElegido[i] === "sin"
+                      ? "border-[#C1452D] bg-white font-semibold text-[#2B2622]"
+                      : "border-[#e8ddc8] bg-white text-[#5c5246]"
+                  }`}
+                >
+                  Sin arroz
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  const copy = draft.adicionales.filter((_, i) => i !== idx);
-                  setDraft({ ...draft, adicionales: copy });
-                }}
-                className="shrink-0 w-10 rounded-lg border border-[#e8ddc8] text-[#C1452D] flex items-center justify-center hover:bg-[#C1452D]/8"
-                title="Quitar este adicional"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))}
+            );
+
+            // Selector de entrada por cada unidad ya agregada de este plato.
+            // Es opcional: si no elige ninguna, esa unidad simplemente no lleva entrada.
+            // Esta entrada va INCLUIDA gratis con el fondo. Si el cliente quiere una
+            // entrada de más (pagada aparte, S/3), lo hace en la sección de abajo
+            // "Entrada extra", que queda justo después de esta para que no se confundan.
+            // NOTA: el margen mt-3 (antes mt-2) le da más "aire" a este bloque respecto
+            // al contador de arriba, para evitar toques accidentales en mobile justo
+            // después de agregar una unidad.
+            const selectorEntradasPorUnidad = fondoQty[i] > 0 && menu.entradas.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {fondoSeleccion[i].map((unidad, unidadIdx) => (
+                  <div key={unidadIdx} className="bg-[#FBF6EC] rounded-lg p-2.5">
+                    <div className="text-[11px] text-[#6E6253] mb-1.5">
+                      {f.nombre}
+                      {unidad.proteina ? ` — ${unidad.proteina}` : ""} #{unidadIdx + 1} &middot; elige su entrada{" "}
+                      <span className="text-[#5C7A4F] font-medium">(incluida, gratis)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {menu.entradas.map((e) => (
+                        <button
+                          key={e}
+                          onClick={() => elegirEntradaDeUnidad(i, unidadIdx, e)}
+                          style={{ touchAction: "manipulation" }}
+                          className={`text-[12px] px-3 py-2 rounded-full border-2 transition ${
+                            unidad.entrada === e
+                              ? "border-[#5C7A4F] bg-white font-semibold text-[#2B2622]"
+                              : "border-[#e8ddc8] bg-white text-[#5c5246]"
+                          }`}
+                        >
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+
+            if (opciones.length === 0) {
+              // Plato sin opciones de proteína: un solo contador, como antes.
+              return (
+                <div key={i}>
+                  <QtyCard
+                    text={f.nombre}
+                    qty={fondoQty[i]}
+                    onChange={(d) => (d > 0 ? agregarFondo(i, "") : quitarFondo(i))}
+                  />
+                  {selectorArroz}
+                  {selectorEntradasPorUnidad}
+                </div>
+              );
+            }
+            // Plato con opciones de proteína: un contador independiente por cada opción,
+            // así se puede pedir, por ejemplo, 1 con Milanesa y 1 con Plancha del mismo plato.
+            return (
+              <div key={i} className={`rounded-xl border-2 p-3 ${fondoQty[i] > 0 ? "border-[#C1452D] bg-white" : "border-[#e8ddc8] bg-white"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-[14px] ${fondoQty[i] > 0 ? "font-semibold text-[#2B2622]" : "text-[#5c5246]"}`}>
+                    {f.nombre}
+                  </span>
+                  {fondoQty[i] > 0 && (
+                    <span className="text-[13px] text-[#C1452D] font-medium">x{fondoQty[i]}</span>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  {opciones.map((op) => (
+                    <ProteinOptionRow
+                      key={op}
+                      label={op}
+                      cantidad={contarProteina(i, op)}
+                      onIncrement={() => agregarFondo(i, op)}
+                      onDecrement={() => quitarFondo(i, op)}
+                    />
+                  ))}
+                </div>
+                {selectorArroz}
+                {selectorEntradasPorUnidad}
+              </div>
+            );
+          })}
         </div>
-        <button
-          onClick={() =>
-            setDraft({ ...draft, adicionales: [...(draft.adicionales || []), { nombre: "", precio: 0 }] })
-          }
-          className="mt-2 text-[13px] text-[#5C7A4F] font-medium flex items-center gap-1 hover:underline"
-        >
-          <Plus size={14} /> Agregar otro adicional
-        </button>
       </Field>
 
-      <Field label="Refresco del día (gratis, incluido en todo pedido)">
-        <input className={inputStyle} value={draft.bebida} onChange={(e) => setDraft({ ...draft, bebida: e.target.value })} placeholder="Ej: Chicha morada" />
+      {menu.entradas.length > 0 && (
+        <Field label="Entrada extra (S/ 3.00 cada una)">
+          <p className="text-[12px] text-[#6E6253] -mt-1 mb-1">
+            Esto es aparte de la entrada gratis que ya elegiste arriba con tu plato. Solo úsalo si quieres una de más.
+          </p>
+          <div className="space-y-2">
+            {menu.entradas.map((e, i) => (
+              <QtyCard
+                key={i}
+                text={e}
+                priceTag="+ S/ 3.00"
+                qty={entradaExtraQty[i]}
+                onChange={(d) => bump(entradaExtraQty, setEntradaExtraQty, i, d)}
+              />
+            ))}
+          </div>
+        </Field>
+      )}
+
+      {(menu.adicionales || []).length > 0 && (
+        <Field label="Adicionales (opcional)">
+          <div className="space-y-2">
+            {menu.adicionales.map((a, i) => (
+              <QtyCard
+                key={i}
+                text={a.nombre}
+                priceTag={`+ S/ ${a.precio.toFixed(2)}`}
+                qty={adicionalQty[i]}
+                onChange={(d) => bump(adicionalQty, setAdicionalQty, i, d)}
+              />
+            ))}
+          </div>
+        </Field>
+      )}
+
+      <Field label="Recojo o delivery">
+        <div className="grid grid-cols-2 gap-2">
+          <SelectCard active={modo === "recojo"} onClick={() => setModo("recojo")} text="Recojo en local" compact icon={<Store size={15} />} />
+          <SelectCard active={modo === "delivery"} onClick={() => setModo("delivery")} text="Delivery" compact icon={<MapPin size={15} />} />
+        </div>
       </Field>
-      <button
-        onClick={saveMenuDraft}
-        className="w-full bg-[#5C7A4F] hover:bg-[#4d6841] text-white font-medium rounded-xl py-3.5 text-[15px] transition"
-      >
-        {savedFlash ? "✓ Menú actualizado" : "Guardar menú de hoy"}
-      </button>
-      <p className="text-[#6E6253] text-[13px] text-center">
-        En cuanto guardas, todos los que abran la página ven este menú al instante. No hace falta volver a mandar nada por WhatsApp.
-      </p>
+
+      {modo === "delivery" && (
+        <Field label="Dirección de entrega">
+          <input className={inputStyle} value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Jr. Las Flores 123, dpto 4" />
+        </Field>
+      )}
+
+      <Field label="¿Cómo vas a pagar?">
+        <div className="grid grid-cols-3 gap-2">
+          {Object.entries(PAY_LABELS).map(([key, label]) => (
+            <SelectCard key={key} active={pago === key} onClick={() => setPago(key)} text={label} compact />
+          ))}
+        </div>
+      </Field>
+
+      <Field label="Tu nombre">
+        <input className={inputStyle} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre y apellido" />
+      </Field>
+
+      <Field label="Tu WhatsApp">
+        <input className={inputStyle} value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="999 999 999" inputMode="tel" />
+      </Field>
+
+      <Field label="Notas (opcional)">
+        <input className={inputStyle} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Sin cebolla, poca sal, etc." />
+      </Field>
     </div>
   );
 }
