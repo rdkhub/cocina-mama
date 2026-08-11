@@ -3,11 +3,24 @@ import React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Field, inputStyle } from "../../ui";
 import { AvisoGenerator } from "../AvisoGenerator";
+import { PlatoFrecuenteChips } from "../PlatoFrecuenteChips";
 
-export function MenuTab({ draft, setDraft, updateList, updateFondo, agregarFondoMenu, quitarFondoMenu, saveMenuDraft, savedFlash }) {
+export function MenuTab({
+  draft,
+  setDraft,
+  updateList,
+  updateFondo,
+  agregarFondoMenu,
+  quitarFondoMenu,
+  saveMenuDraft,
+  savedFlash,
+  platosFrecuentes,
+  onAgregarDesdeBiblioteca,
+}) {
   return (
     <div className="space-y-5 pb-10">
       <Field label="Platos de fondo">
+        <PlatoFrecuenteChips platos={platosFrecuentes} onSelect={onAgregarDesdeBiblioteca} />
         <div className="space-y-3">
           {draft.fondos.map((fondo, idx) => (
             <div key={idx} className="rounded-xl border border-[#e8ddc8] bg-white p-3.5 space-y-3">
