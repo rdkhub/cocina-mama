@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Lock, ArrowLeft } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { todayKey, todayLabel, loadPlatosFrecuentes, guardarPlatoFrecuente } from "../../data";
+import { todayKey, todayLabel, loadPlatosFrecuentes, crearPlatoFrecuente, loadProteinas, crearProteina } from "../../data";
 import { calcularTotal } from "../../utils/pedidos";
 import { PedidosTab } from "./tabs/PedidosTab";
 import { MenuTab } from "./tabs/MenuTab";
@@ -22,23 +22,89 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
   const [fechaHistorial, setFechaHistorial] = useState(todayKey());
   const [modoHistorial, setModoHistorial] = useState("fecha"); // fecha | cliente
   const [busquedaCliente, setBusquedaCliente] = useState("");
-  const [platosFrecuentes, setPlatosFrecuentes] = useState([]);
+  const [platosLibrary, setPlatosLibrary] = useState([]);
+  const [proteinasLibrary, setProteinasLibrary] = useState([]);
 
-  useEffect(() => setDraft(menu), [menu]);
-
-  // Carga la biblioteca de platos frecuentes una sola vez al entrar al panel.
+  // Cuando el menú guardado es de un día distinto a hoy, el borrador arranca
+  // con los platos de fondo EN BLANCO — el menú de hoy se arma de cero cada
+  // día, no se hereda el de ayer. Si ya se editó algo hoy mismo, se sigue
+  // mostrando tal cual (para no perder cambios a mitad de edición).
   useEffect(() => {
-    loadPlatosFrecuentes().then(setPlatosFrecuentes);
+    if (menu.fecha && menu.fecha !== todayKey()) {
+      setDraft({ ...menu, fondos: [] });
+    } else {
+      setDraft(menu);
+    }
+  }, [menu]);
+
+  // Carga las bibliotecas de platos y proteínas una sola vez al entrar al panel.
+  useEffect(() => {
+    loadPlatosFrecuentes().then(setPlatosLibrary);
+    loadProteinas().then(setProteinasLibrary);
   }, []);
 
-  // Agrega un plato de la biblioteca al menú de hoy, ya con su nombre y
-  // proteínas listos — así no hay que volver a escribir nada para un plato
-  // que ya se usó antes.
-  const agregarFondoDesdeBiblioteca = (plato) => {
-    setDraft({
-      ...draft,
-      fondos: [...draft.fondos, { nombre: plato.nombre, proteinas: plato.proteinas || "", permiteArroz: !!plato.permiteArroz }],
-    });
+  // Agrega o quita un plato SIN proteína del menú de hoy con un solo toque.
+  const handleToggleDish = (plato) => {
+    const yaEsta = draft.fondos.some((f) => f.nombre === plato.nombre);
+    if (yaEsta) {
+      setDraft({ ...draft, fondos: draft.fondos.filter((f) => f.nombre !== plato.nombre) });
+    } else {
+      setDraft({
+        ...draft,
+        fondos: [...draft.fondos, { nombre: plato.nombre, proteinas: "", permiteArroz: plato.permiteArroz || false }],
+      });
+    }
+  };
+
+  // Marca o desmarca una proteína para un plato del menú de hoy. Si el plato
+  // todavía no estaba en el menú, se agrega al marcar su primera proteína;
+  // si se desmarca la última, el plato se quita del menú de hoy. Nunca
+  // recuerda lo elegido un día anterior — siempre parte de cero.
+  const handleToggleProtein = (plato, proteinaNombre) => {
+    const existente = draft.fondos.find((f) => f.nombre === plato.nombre);
+    const actuales = existente && existente.proteinas ? existente.proteinas.split(",").map((p) => p.trim()).filter(Boolean) : [];
+    const yaMarcada = actuales.includes(proteinaNombre);
+    const nuevas = yaMarcada ? actuales.filter((p) => p !== proteinaNombre) : [...actuales, proteinaNombre];
+
+    if (nuevas.length === 0) {
+      setDraft({ ...draft, fondos: draft.fondos.filter((f) => f.nombre !== plato.nombre) });
+      return;
+    }
+
+    if (existente) {
+      setDraft({
+        ...draft,
+        fondos: draft.fondos.map((f) => (f.nombre === plato.nombre ? { ...f, proteinas: nuevas.join(", ") } : f)),
+      });
+    } else {
+      setDraft({
+        ...draft,
+        fondos: [...draft.fondos, { nombre: plato.nombre, proteinas: nuevas.join(", "), permiteArroz: plato.permiteArroz || false }],
+      });
+    }
+  };
+
+  // Agrega un plato nuevo a la biblioteca (queda disponible para siempre,
+  // no solo para hoy).
+  const handleCrearPlato = async (datos) => {
+    try {
+      const nuevo = await crearPlatoFrecuente(datos);
+      setPlatosLibrary((prev) => [...prev, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+    } catch (e) {
+      console.error("Error al crear plato:", e);
+      showToast("No se pudo guardar el plato nuevo. Revisa tu conexión e intenta de nuevo.");
+    }
+  };
+
+  // Agrega una proteína nueva a la biblioteca compartida.
+  const handleCrearProteina = async (nombre) => {
+    try {
+      const nueva = await crearProteina(nombre);
+      setProteinasLibrary((prev) => [...prev, nueva].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+    } catch (e) {
+      console.error("Error al crear proteína:", e);
+      showToast("No se pudo guardar la proteína nueva. Revisa tu conexión e intenta de nuevo.");
+    }
   };
 
   // Un pedido se considera "de prueba" si su nombre contiene la palabra PRUEBA
@@ -60,43 +126,11 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
     setDraft(copy);
   };
 
-  // Actualiza un campo específico (nombre, proteinas o permiteArroz) de un plato de fondo
-  const updateFondo = (idx, campo, value) => {
-    const copy = { ...draft, fondos: draft.fondos.map((f, i) => (i === idx ? { ...f, [campo]: value } : f)) };
-    setDraft(copy);
-  };
-
-  // Agrega un plato de fondo nuevo y vacío al final de la lista
-  const agregarFondoMenu = () => {
-    setDraft({ ...draft, fondos: [...draft.fondos, { nombre: "", proteinas: "", permiteArroz: false }] });
-  };
-
-  // Quita un plato de fondo del menú (deja al menos 1)
-  const quitarFondoMenu = (idx) => {
-    if (draft.fondos.length <= 1) return;
-    setDraft({ ...draft, fondos: draft.fondos.filter((_, i) => i !== idx) });
-  };
-
   const saveMenuDraft = async () => {
     try {
       await onMenuSave({ ...draft, fecha: todayKey() });
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 1800);
-
-      // Guarda automáticamente en la biblioteca cualquier plato nuevo (o con
-      // proteínas actualizadas) que se haya usado en este menú, para que la
-      // próxima vez aparezca como opción rápida. No requiere ninguna acción
-      // extra de quien edita el menú.
-      const platosValidos = draft.fondos.filter((f) => f.nombre && f.nombre.trim() !== "");
-      let listaActualizada = platosFrecuentes;
-      for (const plato of platosValidos) {
-        const guardado = await guardarPlatoFrecuente(plato, listaActualizada);
-        const yaEstaba = listaActualizada.some((p) => p.id === guardado.id);
-        listaActualizada = yaEstaba
-          ? listaActualizada.map((p) => (p.id === guardado.id ? guardado : p))
-          : [...listaActualizada, guardado];
-      }
-      setPlatosFrecuentes(listaActualizada);
     } catch (e) {
       console.error("Error al guardar el menú:", e);
       showToast("No se pudo guardar el menú. Revisa tu conexión e intenta de nuevo.");
@@ -262,13 +296,14 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
             draft={draft}
             setDraft={setDraft}
             updateList={updateList}
-            updateFondo={updateFondo}
-            agregarFondoMenu={agregarFondoMenu}
-            quitarFondoMenu={quitarFondoMenu}
             saveMenuDraft={saveMenuDraft}
             savedFlash={savedFlash}
-            platosFrecuentes={platosFrecuentes}
-            onAgregarDesdeBiblioteca={agregarFondoDesdeBiblioteca}
+            platosLibrary={platosLibrary}
+            proteinasLibrary={proteinasLibrary}
+            onToggleDish={handleToggleDish}
+            onToggleProtein={handleToggleProtein}
+            onCrearPlato={handleCrearPlato}
+            onCrearProteina={handleCrearProteina}
           />
         )}
 
