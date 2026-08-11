@@ -1,12 +1,9 @@
 // src/components/client/OrderForm.jsx
 import React from "react";
-import { Field, QtyCard, SelectCard } from "../ui";
+import { Field, QtyCard, SelectCard, inputStyle } from "../ui";
 import { Store, MapPin } from "lucide-react";
 import { PAY_LABELS } from "../../utils/pedidos";
 import { ProteinOptionRow } from "./ProteinOptionRow";
-
-export const inputStyle =
-  "w-full rounded-lg border border-[#dccdb4] bg-[#FFFDF8] px-3.5 py-2.5 text-[15px] text-[#2B2622] placeholder-[#998C76] outline-none focus:border-[#C1452D] focus:ring-2 focus:ring-[#C1452D]/15 transition";
 
 // Formulario principal donde el cliente arma su pedido. Recibe TODO el estado
 // y los manejadores de eventos como props desde ClientView (el componente
