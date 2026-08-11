@@ -1,10 +1,21 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cocina de Mamá — Menú del día</title>
+
+    <!-- Precarga de fuentes: el navegador empieza a conectarse con Google
+         Fonts de inmediato (preconnect), en vez de esperar a que el CSS
+         termine de descargar para recién ahí enterarse de que necesita
+         esas fuentes (que era lo que pasaba con @import dentro del CSS). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>
