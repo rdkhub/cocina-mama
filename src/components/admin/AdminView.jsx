@@ -25,21 +25,25 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
   const [platosLibrary, setPlatosLibrary] = useState([]);
   const [proteinasLibrary, setProteinasLibrary] = useState([]);
 
-  // Une cualquier plato duplicado (mismo platoId, o mismo nombre si es un
-  // registro viejo sin platoId) en un solo renglón, combinando sus
-  // proteínas. Esto limpia solo cualquier duplicado que haya quedado
-  // guardado de antes, cada vez que se abre la pestaña o se guarda.
+  // Une cualquier plato duplicado en un solo renglón, combinando sus
+  // proteínas. Compara el nombre NORMALIZADO (sin espacios de más al
+  // inicio/final, sin importar mayúsculas) en vez de exigir coincidencia
+  // exacta — así atrapa platos viejos que quedaron guardados con un espacio
+  // extra invisible (esto es justo lo que causaba el duplicado real).
+  const normalizarNombre = (nombre) => (nombre || "").trim().toLowerCase();
+
   const deduplicarFondos = (fondos) => {
     const porClave = new Map();
     fondos.forEach((f) => {
-      const clave = f.platoId || f.nombre;
+      const clave = normalizarNombre(f.nombre);
       if (!porClave.has(clave)) {
-        porClave.set(clave, { ...f });
+        porClave.set(clave, { ...f, nombre: (f.nombre || "").trim() });
       } else {
         const existente = porClave.get(clave);
         const proteinasExistentes = existente.proteinas ? existente.proteinas.split(",").map((p) => p.trim()).filter(Boolean) : [];
         const proteinasNuevas = f.proteinas ? f.proteinas.split(",").map((p) => p.trim()).filter(Boolean) : [];
         existente.proteinas = Array.from(new Set([...proteinasExistentes, ...proteinasNuevas])).join(", ");
+        if (!existente.platoId && f.platoId) existente.platoId = f.platoId;
       }
     });
     return Array.from(porClave.values());
@@ -76,14 +80,12 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
     loadProteinas().then(setProteinasLibrary);
   }, []);
 
-  // Encuentra si un plato de la biblioteca ya está en el menú de hoy.
-  // Compara por ID (platoId), NUNCA por el texto del nombre — comparar por
-  // texto es frágil (un espacio o mayúscula de más ya los hace ver como
-  // "distintos" y duplica el plato en vez de reconocerlo). Los fondos viejos
-  // que no tengan platoId (de antes de este cambio) usan el nombre como
-  // respaldo, para no romper menús ya guardados.
-  const encontrarFondo = (plato) =>
-    draft.fondos.find((f) => (f.platoId ? f.platoId === plato.id : f.nombre === plato.nombre));
+  // Encuentra si un plato de la biblioteca ya está en el menú de hoy,
+  // comparando el nombre normalizado (ver normalizarNombre arriba).
+  const encontrarFondo = (plato) => {
+    const clave = normalizarNombre(plato.nombre);
+    return draft.fondos.find((f) => normalizarNombre(f.nombre) === clave);
+  };
 
   // Agrega o quita un plato SIN proteína del menú de hoy con un solo toque.
   const handleToggleDish = (plato) => {
@@ -93,7 +95,7 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
     } else {
       setDraft({
         ...draft,
-        fondos: [...draft.fondos, { platoId: plato.id, nombre: plato.nombre, proteinas: "", permiteArroz: plato.permiteArroz || false }],
+        fondos: [...draft.fondos, { platoId: plato.id, nombre: plato.nombre.trim(), proteinas: "", permiteArroz: plato.permiteArroz || false }],
       });
     }
   };
@@ -121,7 +123,7 @@ export function AdminView({ menu, orders, onMenuSave, onOrderUpdate, onOrderDele
     } else {
       setDraft({
         ...draft,
-        fondos: [...draft.fondos, { platoId: plato.id, nombre: plato.nombre, proteinas: nuevas.join(", "), permiteArroz: plato.permiteArroz || false }],
+        fondos: [...draft.fondos, { platoId: plato.id, nombre: plato.nombre.trim(), proteinas: nuevas.join(", "), permiteArroz: plato.permiteArroz || false }],
       });
     }
   };
