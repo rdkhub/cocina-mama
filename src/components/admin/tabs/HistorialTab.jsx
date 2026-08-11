@@ -1,12 +1,9 @@
 // src/components/admin/tabs/HistorialTab.jsx
 import React from "react";
 import { Phone } from "lucide-react";
-import { Field, SelectCard, EmptyState } from "../../ui";
+import { Field, SelectCard, EmptyState, inputStyle } from "../../ui";
 import { OrderCard } from "../OrderCard";
 import { calcularTotal } from "../../../utils/pedidos";
-
-const inputStyle =
-  "w-full rounded-lg border border-[#dccdb4] bg-[#FFFDF8] px-3.5 py-2.5 text-[15px] text-[#2B2622] placeholder-[#998C76] outline-none focus:border-[#C1452D] focus:ring-2 focus:ring-[#C1452D]/15 transition";
 
 export function HistorialTab({
   modoHistorial,
