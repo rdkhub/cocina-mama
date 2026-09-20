@@ -120,7 +120,7 @@ export function MenuTab({
       </Field>
       <button
         onClick={saveMenuDraft}
-        className="w-full bg-[#5C7A4F] hover:bg-[#4d6841] text-white font-medium rounded-xl py-3.5 text-[15px] transition"
+        className="btn-cta-salvia w-full bg-[#5C7A4F] hover:bg-[#4d6841] text-white font-medium rounded-xl py-3.5 text-[15px]"
       >
         {savedFlash ? "✓ Menú actualizado" : "Guardar menú de hoy"}
       </button>

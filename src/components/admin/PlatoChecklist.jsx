@@ -18,6 +18,7 @@ export function PlatoChecklist({
   onCrearProteina,
 }) {
   const [expandido, setExpandido] = useState(null);
+  const [popped, setPopped] = useState(null);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoRequiereProteina, setNuevoRequiereProteina] = useState(false);
@@ -67,10 +68,14 @@ export function PlatoChecklist({
           return (
             <button
               key={plato.id}
-              onClick={() => onToggleDish(plato)}
+              onClick={() => {
+                onToggleDish(plato);
+                setPopped("dish-" + plato.id);
+              }}
+              onAnimationEnd={() => setPopped(null)}
               className={`w-full flex items-center gap-2.5 rounded-xl border-2 px-3.5 py-3 text-left transition ${
                 activo ? "border-terracota bg-white" : "border-arena bg-white"
-              }`}
+              } ${popped === "dish-" + plato.id ? "animate-pop" : ""}`}
             >
               <span
                 className={`w-[18px] h-[18px] rounded-full border-2 shrink-0 transition ${
@@ -107,13 +112,18 @@ export function PlatoChecklist({
                 )}
                 {proteinasLibrary.map((prot) => {
                   const marcada = proteinasElegidas.includes(prot.nombre);
+                  const key = "prot-" + plato.id + "-" + prot.id;
                   return (
                     <button
                       key={prot.id}
-                      onClick={() => onToggleProtein(plato, prot.nombre)}
+                      onClick={() => {
+                        onToggleProtein(plato, prot.nombre);
+                        setPopped(key);
+                      }}
+                      onAnimationEnd={() => setPopped(null)}
                       className={`text-[12px] px-3 py-1.5 rounded-full border-2 transition ${
                         marcada ? "border-terracota bg-white font-semibold text-tinta" : "border-arena bg-white text-texto-inactivo"
-                      }`}
+                      } ${popped === key ? "animate-pop" : ""}`}
                     >
                       {prot.nombre}
                     </button>
@@ -178,7 +188,7 @@ export function PlatoChecklist({
             <button onClick={() => setMostrarForm(false)} className="flex-1 text-[13px] py-2 rounded-lg border border-arena-oscura text-texto-inactivo">
               Cancelar
             </button>
-            <button onClick={guardarPlatoNuevo} className="flex-1 text-[13px] py-2 rounded-lg bg-terracota text-white font-medium">
+            <button onClick={guardarPlatoNuevo} className="btn-cta flex-1 text-[13px] py-2 rounded-lg bg-terracota text-white font-medium">
               Guardar plato
             </button>
           </div>

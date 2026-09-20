@@ -232,7 +232,7 @@ export function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset 
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="w-full bg-[#C1452D] hover:bg-[#a93a25] disabled:opacity-60 text-white font-medium rounded-xl py-3.5 text-[15px] transition flex items-center justify-center gap-2"
+              className="btn-cta w-full bg-[#C1452D] hover:bg-[#a93a25] disabled:opacity-60 text-white font-medium rounded-xl py-3.5 text-[15px] flex items-center justify-center gap-2"
             >
               Enviar mi pedido
             </button>
@@ -257,7 +257,7 @@ export function ClientView({ menu, onSubmit, submitting, justSubmitted, onReset 
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="bg-[#C1452D] hover:bg-[#a93a25] disabled:opacity-60 text-white font-medium rounded-xl px-6 py-3 text-[15px] transition flex items-center justify-center gap-2 shrink-0"
+              className="btn-cta bg-[#C1452D] hover:bg-[#a93a25] disabled:opacity-60 text-white font-medium rounded-xl px-6 py-3 text-[15px] flex items-center justify-center gap-2 shrink-0"
             >
               {submitting ? <Loader2 size={18} className="animate-spin" /> : null}
               {submitting ? "Enviando…" : "Enviar mi pedido"}

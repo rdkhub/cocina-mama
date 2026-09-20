@@ -36,7 +36,7 @@ export function AvisoGenerator({ draft }) {
     <div className="mt-6 pt-6 border-t border-arena">
       <button
         onClick={generar}
-        className="w-full bg-tinta hover:bg-tinta-media text-white font-medium rounded-xl py-3.5 text-[15px] transition flex items-center justify-center gap-2"
+        className="btn-cta-tinta w-full bg-tinta hover:bg-tinta-media text-white font-medium rounded-xl py-3.5 text-[15px] flex items-center justify-center gap-2"
       >
         <Megaphone size={17} />
         Generar aviso para WhatsApp
@@ -52,8 +52,8 @@ export function AvisoGenerator({ draft }) {
           />
           <button
             onClick={copiar}
-            className={`w-full font-medium rounded-xl py-3.5 text-[15px] transition flex items-center justify-center gap-2 ${
-              copiado ? "bg-salvia text-white" : "bg-terracota hover:bg-terracota-oscura text-white"
+            className={`w-full font-medium rounded-xl py-3.5 text-[15px] flex items-center justify-center gap-2 ${
+              copiado ? "btn-cta-salvia bg-salvia text-white" : "btn-cta bg-terracota hover:bg-terracota-oscura text-white"
             }`}
           >
             {copiado ? <Check size={18} /> : <Copy size={18} />}

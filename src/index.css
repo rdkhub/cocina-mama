@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* Botón principal "mecánico": se hunde al presionar (sombra + traslado),
+     en vez de solo cambiar de color. Confirmado con el equipo como la
+     sensación "premium" que buscaban para las acciones principales. */
+  .btn-cta {
+    @apply shadow-cta transition-[transform,box-shadow] duration-150 active:translate-y-[3px] active:scale-[0.98] active:shadow-cta-active;
+  }
+  .btn-cta-salvia {
+    @apply shadow-cta-salvia transition-[transform,box-shadow] duration-150 active:translate-y-[3px] active:scale-[0.98] active:shadow-cta-salvia-active;
+  }
+  .btn-cta-tinta {
+    @apply shadow-cta-tinta transition-[transform,box-shadow] duration-150 active:translate-y-[3px] active:scale-[0.98] active:shadow-cta-tinta-active;
+  }
+}
+
 .font-display {
   font-family: 'Fraunces', serif;
   font-weight: 600;
