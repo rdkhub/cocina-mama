@@ -47,3 +47,24 @@ export function calcularTotal(fondos, entradas, modo = "recojo", adicionales = [
   );
   return totalFondos * precioFondo + entradasSolas * PRECIO_ENTRADA_SOLA + totalAdicionales;
 }
+
+// Total de un pedido para mostrar en pantalla (data.js ya lo deja calculado
+// en order.total; esto es por si llega un pedido armado a mano).
+export function totalDePedido(o) {
+  if (Number(o.formato) >= 2) return Number(o.total) || 0;
+  return calcularTotal(o.fondos, o.entradas, o.modo, o.adicionales);
+}
+
+// Total estimado del carrito del cliente con los precios del menú del día.
+// Es la misma cuenta que hace la base de datos al guardar el pedido
+// (función validar_pedido), que es la que manda.
+export function totalCarrito({ menus, entradasExtra, extras }, dia, modo) {
+  if (!dia) return 0;
+  const nMenus = menus.reduce((a, m) => a + m.cantidad, 0);
+  const nEntradas = Object.values(entradasExtra).reduce((a, q) => a + q, 0);
+  const totalExtras = extras.reduce((a, x) => a + x.cantidad * x.precio, 0);
+  const precioMenu = modo === "delivery" ? dia.precioDelivery : dia.precioRecojo;
+  return nMenus * precioMenu + nEntradas * dia.precioEntradaExtra + totalExtras;
+}
+
+export const soles = (n) => `S/ ${Number(n || 0).toFixed(2)}`;

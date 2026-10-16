@@ -1,0 +1,2 @@
+[functions.notificar-pedido]
+verify_jwt = false

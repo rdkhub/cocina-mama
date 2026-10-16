@@ -1,55 +1,35 @@
+// src/data.js
+// Pedidos (tabla "orders") y utilidades de fecha. El catálogo de platos y el
+// menú de cada día viven en src/lib/catalogo.js.
 import { supabase } from "./supabaseClient";
+import { calcularTotal } from "./utils/pedidos";
 
-export const todayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+// Fecha local en formato YYYY-MM-DD (así se guardan los pedidos y los menús).
+export const fechaKey = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+export const todayKey = () => fechaKey(new Date());
+
+// "2026-10-16" → Date local (sin desfase de zona horaria).
+export const keyToDate = (key) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
 };
 
-export const todayLabel = () => {
-  const d = new Date();
-  const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  return `${dias[d.getDay()]} ${d.getDate()} de ${meses[d.getMonth()]}`;
+// "Viernes 16 de octubre"
+export const fechaLabel = (key) => {
+  const d = keyToDate(key);
+  return `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
 };
 
-export const defaultMenu = () => ({
-  fondos: ["Arroz con pollo + papa a la huancaína", "Lomo saltado"],
-  entradas: ["Ensalada de tomate", "Ensalada de palta", "Ensalada de fideos"],
-  bebida: "Chicha morada",
-  fecha: todayKey(),
-});
-
-// ---------- MENÚ ----------
-// Hay una sola fila en la tabla "menu" con id = 1, que siempre se actualiza (upsert).
-export async function loadMenu() {
-  const { data, error } = await supabase.from("menu").select("*").eq("id", 1).maybeSingle();
-  if (error || !data) return defaultMenu();
-  return {
-    fondos: data.fondos ?? defaultMenu().fondos,
-    entradas: data.entradas ?? defaultMenu().entradas,
-    bebida: data.bebida ?? defaultMenu().bebida,
-    fecha: data.fecha ?? todayKey(),
-  };
-}
-
-export async function saveMenu(menu) {
-  const { error } = await supabase.from("menu").upsert({
-    id: 1,
-    fondos: menu.fondos,
-    entradas: menu.entradas,
-    bebida: menu.bebida,
-    fecha: menu.fecha ?? todayKey(),
-  });
-  if (error) throw error;
-  return true;
-}
+export const todayLabel = () => fechaLabel(todayKey());
 
 // ---------- PEDIDOS ----------
 export async function loadOrders() {
-  const { data, error } = await supabase
-    .from("orders")
-    .select("*")
-    .order("creado_en", { ascending: true });
+  const { data, error } = await supabase.from("orders").select("*").order("creado_en", { ascending: true });
   if (error || !data) return [];
   return data.map(rowToOrder);
 }
@@ -76,14 +56,22 @@ export async function deleteOrder(id) {
   return true;
 }
 
-// Convierte una fila de la tabla "orders" (snake_case) al formato que usa la app (camelCase)
+// Fila de la tabla (snake_case) → objeto de la app (camelCase).
+//
+// El total:
+//  - Pedidos nuevos (formato 2): el total lo calcula la base de datos con
+//    los precios del menú de ese día, y se usa tal cual.
+//  - Pedidos de antes (formato 1): se calcula igual que siempre (S/12 o
+//    S/13 por plato, S/3 por entrada extra), para que las deudas, el
+//    historial y los resúmenes semanales no cambien.
 function rowToOrder(row) {
-  return {
+  const order = {
     id: row.id,
     nombre: row.nombre,
     telefono: row.telefono,
     fondos: row.fondos ?? [],
     entradas: row.entradas ?? [],
+    adicionales: row.adicionales ?? [],
     bebida: row.bebida ?? null,
     modo: row.modo,
     direccion: row.direccion ?? "",
@@ -93,17 +81,24 @@ function rowToOrder(row) {
     creadoEn: row.creado_en,
     listo: row.listo,
     pagado: row.pagado,
+    formato: Number(row.formato) || 1,
   };
+  order.total =
+    order.formato >= 2
+      ? Number(row.total) || 0
+      : calcularTotal(order.fondos, order.entradas, order.modo, order.adicionales);
+  return order;
 }
 
-// Convierte el formato de la app al formato de la tabla (para insertar)
+// Objeto de la app → fila para insertar. El total lo pone la base de datos.
 function orderToRow(order) {
   return {
     nombre: order.nombre,
     telefono: order.telefono,
     fondos: order.fondos,
     entradas: order.entradas,
-    bebida: order.bebida,
+    adicionales: order.adicionales ?? [],
+    bebida: order.bebida ?? null,
     modo: order.modo,
     direccion: order.direccion,
     pago: order.pago,
@@ -112,59 +107,6 @@ function orderToRow(order) {
     creado_en: order.creadoEn,
     listo: order.listo,
     pagado: order.pagado,
+    formato: 2,
   };
-}
-
-// ---------- BIBLIOTECA DE PLATOS ----------
-// Cada plato guarda solo su NOMBRE y si necesita elegir proteína o no —
-// nunca guarda QUÉ proteínas lleva, porque eso cambia día a día.
-export async function loadPlatosFrecuentes() {
-  const { data, error } = await supabase
-    .from("platos_frecuentes")
-    .select("*")
-    .order("nombre", { ascending: true });
-  if (error || !data) return [];
-  return data.map((row) => ({
-    id: row.id,
-    nombre: row.nombre,
-    requiereProteina: row.requiere_proteina ?? false,
-    permiteArroz: row.permite_arroz ?? false,
-  }));
-}
-
-export async function crearPlatoFrecuente({ nombre, requiereProteina, permiteArroz }) {
-  const { data, error } = await supabase
-    .from("platos_frecuentes")
-    .insert({ nombre: nombre.trim(), requiere_proteina: !!requiereProteina, permite_arroz: !!permiteArroz })
-    .select()
-    .single();
-  if (error) throw error;
-  return {
-    id: data.id,
-    nombre: data.nombre,
-    requiereProteina: data.requiere_proteina,
-    permiteArroz: data.permite_arroz,
-  };
-}
-
-// ---------- BIBLIOTECA DE PROTEÍNAS ----------
-// Lista compartida entre todos los platos que necesiten proteína. Se elige
-// libre cada día — nunca se recuerda qué se usó la última vez para un plato.
-export async function loadProteinas() {
-  const { data, error } = await supabase
-    .from("proteinas")
-    .select("*")
-    .order("nombre", { ascending: true });
-  if (error || !data) return [];
-  return data.map((row) => ({ id: row.id, nombre: row.nombre }));
-}
-
-export async function crearProteina(nombre) {
-  const { data, error } = await supabase
-    .from("proteinas")
-    .insert({ nombre: nombre.trim() })
-    .select()
-    .single();
-  if (error) throw error;
-  return { id: data.id, nombre: data.nombre };
 }

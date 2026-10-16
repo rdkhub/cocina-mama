@@ -55,12 +55,27 @@ export default {
           "0%, 100%": { opacity: "0.5" },
           "50%": { opacity: "1" },
         },
+        fade: {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        sube: {
+          from: { transform: "translateY(24px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+        brilla: {
+          "0%, 100%": { boxShadow: "0 0 0 0 rgba(193,69,45,0)" },
+          "50%": { boxShadow: "0 0 0 6px rgba(193,69,45,0.25)" },
+        },
       },
       animation: {
         // Resorte con rebote (confirmado en el mockup) en vez de un simple
         // "ease" — se siente vivo, no mecánico ni plano.
         pop: "pop 260ms cubic-bezier(0.34,1.56,0.64,1)",
         shimmer: "shimmer 1.1s ease-in-out infinite",
+        fade: "fade 180ms ease-out",
+        sube: "sube 260ms cubic-bezier(0.22,1,0.36,1)",
+        brilla: "brilla 1.2s ease-in-out 3",
       },
     },
   },
