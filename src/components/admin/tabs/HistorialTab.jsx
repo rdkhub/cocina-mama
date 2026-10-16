@@ -3,7 +3,8 @@ import React from "react";
 import { Phone } from "lucide-react";
 import { Field, SelectCard, EmptyState, inputStyle } from "../../ui";
 import { OrderCard } from "../OrderCard";
-import { calcularTotal } from "../../../utils/pedidos";
+import { soles } from "../../../utils/pedidos";
+import { fechaLabel } from "../../../data";
 
 export function HistorialTab({
   modoHistorial,
@@ -19,34 +20,19 @@ export function HistorialTab({
   onOrderUpdate,
   onOrderDelete,
   todayKey,
-  todayLabel,
 }) {
   return (
     <div className="pb-10">
       <div className="grid grid-cols-2 gap-2 mb-4">
-        <SelectCard
-          active={modoHistorial === "fecha"}
-          onClick={() => setModoHistorial("fecha")}
-          text="Buscar por fecha"
-          compact
-        />
-        <SelectCard
-          active={modoHistorial === "cliente"}
-          onClick={() => setModoHistorial("cliente")}
-          text="Buscar por cliente"
-          compact
-        />
+        <SelectCard active={modoHistorial === "fecha"} onClick={() => setModoHistorial("fecha")} text="Buscar por fecha" compact />
+        <SelectCard active={modoHistorial === "cliente"} onClick={() => setModoHistorial("cliente")} text="Buscar por cliente" compact />
       </div>
 
       {modoHistorial === "fecha" && (
         <>
           <Field label="Ver pedidos del día">
-            <select
-              className={inputStyle}
-              value={fechaHistorial}
-              onChange={(e) => setFechaHistorial(e.target.value)}
-            >
-              {fechasConPedidos.length === 0 && <option value={todayKey()}>Hoy &middot; {todayLabel()}</option>}
+            <select className={inputStyle} value={fechaHistorial} onChange={(e) => setFechaHistorial(e.target.value)}>
+              {fechasConPedidos.length === 0 && <option value={todayKey()}>Hoy · {fechaLabel(todayKey())}</option>}
               {fechasConPedidos.map((f) => (
                 <option key={f} value={f}>
                   {f === todayKey() ? `Hoy · ${f}` : f}
@@ -56,13 +42,11 @@ export function HistorialTab({
           </Field>
 
           {ordersDelDia.length > 0 && (
-            <div className="bg-gradient-to-b from-[#332A21] to-[#211B16] rounded-2xl p-4 my-4 flex items-center justify-between">
+            <div className="bg-gradient-to-b from-tinta-media to-tinta-oscura rounded-2xl p-4 my-4 flex items-center justify-between">
               <span className="text-[#cfc3ad] text-sm">
-                Total vendido &middot; {ordersDelDia.length} pedido{ordersDelDia.length > 1 ? "s" : ""}
+                Total vendido · {ordersDelDia.length} pedido{ordersDelDia.length > 1 ? "s" : ""}
               </span>
-              <span className="text-[#E0A95C] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                S/ {totalDelDia.toFixed(2)}
-              </span>
+              <span className="text-dorado text-xl font-semibold font-mono">{soles(totalDelDia)}</span>
             </div>
           )}
 
@@ -85,12 +69,7 @@ export function HistorialTab({
       {modoHistorial === "cliente" && (
         <>
           <Field label="Buscar por nombre o teléfono">
-            <input
-              className={inputStyle}
-              value={busquedaCliente}
-              onChange={(e) => setBusquedaCliente(e.target.value)}
-              placeholder="Ej: María, o 999..."
-            />
+            <input className={inputStyle} value={busquedaCliente} onChange={(e) => setBusquedaCliente(e.target.value)} placeholder="Ej: María, o 999..." />
           </Field>
 
           {busquedaCliente.trim() === "" && (
@@ -107,21 +86,19 @@ export function HistorialTab({
 
           <div className="space-y-4 mt-4">
             {clientesEncontrados.map((c) => (
-              <div key={c.nombre + c.telefono} className="bg-white rounded-2xl border border-[#eee2cb] shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4">
+              <div key={c.nombre + c.telefono} className="bg-white rounded-2xl border border-[#eee2cb] shadow-card p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <div className="font-medium text-[#2B2622]">{c.nombre}</div>
-                    <div className="text-[13px] text-[#6E6253] flex items-center gap-1">
+                    <div className="font-medium text-tinta">{c.nombre}</div>
+                    <div className="text-[13px] text-texto-secundario flex items-center gap-1">
                       <Phone size={12} /> {c.telefono}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[#2B2622] font-semibold text-[15px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                      S/ {c.totalGastado.toFixed(2)} <span className="text-[11px] text-[#998C76] font-normal">en total</span>
+                    <div className="text-tinta font-semibold text-[15px] font-mono">
+                      {soles(c.totalGastado)} <span className="text-[11px] text-texto-terciario font-normal font-sans">en total</span>
                     </div>
-                    {c.totalDebe > 0 && (
-                      <div className="text-[#C1452D] text-[12px] font-medium mt-0.5">Debe S/ {c.totalDebe.toFixed(2)}</div>
-                    )}
+                    {c.totalDebe > 0 && <div className="text-terracota text-[12px] font-medium mt-0.5">Debe {soles(c.totalDebe)}</div>}
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -130,18 +107,17 @@ export function HistorialTab({
                     .sort((a, b) => b.fecha.localeCompare(a.fecha))
                     .map((p) => {
                       const resumen = p.fondos.map((f) => (f.cantidad > 1 ? `${f.nombre} x${f.cantidad}` : f.nombre)).join(", ");
-                      const montoPedido = typeof p.total === "number" ? p.total : calcularTotal(p.fondos, p.entradas, p.modo, p.adicionales);
                       const pendiente = !p.pagado;
                       return (
-                        <div key={p.id} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2 text-[13px]">
+                        <div key={p.id} className="flex items-center justify-between bg-crema rounded-lg px-3 py-2 text-[13px]">
                           <span className="text-[#5c5246]">
-                            {p.fecha} &middot; {resumen.length > 24 ? resumen.slice(0, 24) + "…" : resumen}
-                            <span className="text-[#9C7A3C] font-medium"> &middot; S/ {montoPedido.toFixed(2)}</span>
+                            {p.fecha} · {resumen.length > 24 ? resumen.slice(0, 24) + "…" : resumen}
+                            <span className="text-ocre font-medium"> · {soles(p.total)}</span>
                           </span>
                           {pendiente ? (
-                            <span className="text-[#C1452D] font-medium whitespace-nowrap ml-2">Debe</span>
+                            <span className="text-terracota font-medium whitespace-nowrap ml-2">Debe</span>
                           ) : (
-                            <span className="text-[#5C7A4F] font-medium whitespace-nowrap ml-2">Pagado</span>
+                            <span className="text-salvia font-medium whitespace-nowrap ml-2">Pagado</span>
                           )}
                         </div>
                       );

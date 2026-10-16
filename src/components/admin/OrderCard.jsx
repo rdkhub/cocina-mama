@@ -2,12 +2,10 @@
 import React, { useState } from "react";
 import { Phone, Clock, Trash2, CheckCircle2, Circle, Wallet } from "lucide-react";
 import { Tag, ConfirmDialog } from "../ui";
-import { calcularTotal, PAY_LABELS, PAY_COLORS } from "../../utils/pedidos";
+import { PAY_LABELS, PAY_COLORS, soles } from "../../utils/pedidos";
 
-export function OrderCard({ order, onUpdate, onDelete }) {
+export function OrderCard({ order, onUpdate, onDelete, resaltado }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-
-  const total = typeof order.total === "number" ? order.total : calcularTotal(order.fondos, order.entradas, order.modo, order.adicionales);
 
   // Las entradas guardadas en el pedido incluyen TANTO las que vinieron incluidas
   // gratis con un fondo COMO las extra pagadas aparte. Como cada línea de fondo ya
@@ -26,32 +24,31 @@ export function OrderCard({ order, onUpdate, onDelete }) {
     .filter(Boolean);
 
   return (
-    <div className="bg-white rounded-2xl border border-[#eee2cb] shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4">
+    <div
+      id={`pedido-${order.id}`}
+      className={`bg-white rounded-2xl border shadow-card p-4 scroll-mt-4 transition ${
+        resaltado ? "border-terracota ring-2 ring-terracota/30 animate-brilla" : "border-[#eee2cb]"
+      }`}
+    >
       <div className="flex items-start justify-between mb-2.5">
         <div>
-          <div className="font-medium text-[#2B2622] flex items-center gap-1.5">
+          <div className="font-medium text-tinta flex items-center gap-1.5">
             {order.nombre}
             {order.nombre.toLowerCase().includes("prueba") && (
-              <span className="text-[10px] uppercase font-normal text-[#9C7A3C] border border-[#9C7A3C]/40 rounded-full px-1.5 py-0.5">
+              <span className="text-[10px] uppercase font-normal text-ocre border border-ocre/40 rounded-full px-1.5 py-0.5">
                 Prueba
               </span>
             )}
           </div>
-          <div className="text-[13px] text-[#6E6253] flex items-center gap-1">
+          <div className="text-[13px] text-texto-secundario flex items-center gap-1">
             <Phone size={12} /> {order.telefono}
             <Clock size={12} className="ml-1.5" />{" "}
             {new Date(order.creadoEn).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[#C1452D] font-semibold text-[15px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-            S/ {total.toFixed(2)}
-          </div>
-          <button
-            onClick={() => setConfirmOpen(true)}
-            aria-label="Borrar este pedido"
-            className="text-[#B8A684] hover:text-[#C1452D] p-1"
-          >
+          <div className="text-terracota font-semibold font-mono text-[15px]">{soles(order.total)}</div>
+          <button onClick={() => setConfirmOpen(true)} aria-label="Borrar este pedido" className="text-arena-hover hover:text-terracota p-1">
             <Trash2 size={16} />
           </button>
         </div>
@@ -61,29 +58,23 @@ export function OrderCard({ order, onUpdate, onDelete }) {
         {order.fondos.map((f, i) => (
           <div key={"f" + i}>
             {f.nombre}
-            {f.proteina && <span className="text-[#9C7A3C]"> — {f.proteina}</span>}
-            {f.entradaIncluida && <span className="text-[#5C7A4F]"> + {f.entradaIncluida}</span>}
-            {f.arroz && <span className="text-[#9C7A3C]"> ({f.arroz === "con" ? "con arroz" : "sin arroz"})</span>}{" "}
-            {f.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{f.cantidad}</span>}
+            {f.proteina && <span className="text-ocre"> — {f.proteina}</span>}
+            {f.entradaIncluida && <span className="text-salvia"> + {f.entradaIncluida}</span>}
+            {f.arroz && <span className="text-ocre"> ({f.arroz === "con" ? "con arroz" : "sin arroz"})</span>}{" "}
+            {f.cantidad > 1 && <span className="text-terracota font-semibold">x{f.cantidad}</span>}
           </div>
         ))}
         {entradasExtra.map((e, i) => (
-          <div key={"e" + i} className="text-[#6E6253]">
-            + {e.nombre} <span className="text-[10px] uppercase text-[#9C7A3C]">(extra)</span>{" "}
-            {e.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{e.cantidad}</span>}
+          <div key={"e" + i} className="text-texto-secundario">
+            + {e.nombre} <span className="text-[10px] uppercase text-ocre">(extra)</span> {e.cantidad > 1 && <span className="text-terracota font-semibold">x{e.cantidad}</span>}
           </div>
         ))}
         {(order.adicionales || []).map((a, i) => (
-          <div key={"a" + i} className="text-[#6E6253]">
-            + {a.nombre} {a.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{a.cantidad}</span>}
+          <div key={"a" + i} className="text-texto-secundario">
+            + {a.nombre} {a.cantidad > 1 && <span className="text-terracota font-semibold">x{a.cantidad}</span>}
           </div>
         ))}
-        {order.bebida && (
-          <div className="text-[#6E6253]">
-            {order.bebida.nombre} {order.bebida.cantidad > 1 && <span className="text-[#C1452D] font-semibold">x{order.bebida.cantidad}</span>}
-          </div>
-        )}
-        {order.notas && <div className="text-[#9C7A3C] italic">"{order.notas}"</div>}
+        {order.notas && <div className="text-ocre italic">"{order.notas}"</div>}
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
@@ -93,17 +84,17 @@ export function OrderCard({ order, onUpdate, onDelete }) {
         <Tag color={PAY_COLORS[order.pago]}>{PAY_LABELS[order.pago]}</Tag>
       </div>
 
-      <div className="flex items-center justify-between pt-3 border-t border-[#f0e8d6]">
+      <div className="flex items-center justify-between pt-3 border-t border-divisor">
         <button
           onClick={() => onUpdate(order.id, { listo: !order.listo })}
-          className={`text-[13px] font-medium flex items-center gap-1.5 ${order.listo ? "text-[#5C7A4F]" : "text-[#6E6253]"}`}
+          className={`text-[13px] font-medium flex items-center gap-1.5 ${order.listo ? "text-salvia" : "text-texto-secundario"}`}
         >
           {order.listo ? <CheckCircle2 size={16} /> : <Circle size={16} />}
           {order.listo ? "Listo" : "Marcar listo"}
         </button>
         <button
           onClick={() => onUpdate(order.id, { pagado: !order.pagado })}
-          className={`text-[13px] font-medium flex items-center gap-1.5 ${order.pagado ? "text-[#5C7A4F]" : "text-[#C1452D]"}`}
+          className={`text-[13px] font-medium flex items-center gap-1.5 ${order.pagado ? "text-salvia" : "text-terracota"}`}
         >
           <Wallet size={15} />
           {order.pagado ? "Pagado" : "Debe — marcar pagado"}

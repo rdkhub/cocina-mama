@@ -13,3 +13,6 @@ export { ConfirmDialog } from "./ConfirmDialog";
 export { Toast } from "./Toast";
 export { Skeleton } from "./Skeleton";
 export { inputStyle } from "./inputStyle";
+export { FotoPlato } from "./FotoPlato";
+export { Sheet } from "./Sheet";
+export { Switch } from "./Switch";
