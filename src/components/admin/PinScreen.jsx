@@ -1,28 +1,36 @@
 // src/components/admin/PinScreen.jsx
 import React, { useState } from "react";
-import { Lock, ArrowLeft } from "lucide-react";
+import { Lock, ArrowLeft, Loader2 } from "lucide-react";
+import { PIN_MINIMO, PIN_MAXIMO } from "../../lib/auth";
 
-const ADMIN_PIN = "1234"; // cámbialo aquí por el PIN que quieras usar en el local
-
+// El PIN se verifica en el servidor (Supabase Auth). Aquí no hay ningún PIN
+// guardado: onUnlock(pin) lanza un error si no es correcto.
 export function PinScreen({ onUnlock, onBack }) {
   const [pin, setPin] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState("");
+  const [verificando, setVerificando] = useState(false);
 
-  const tryUnlock = (value) => {
-    if (value === ADMIN_PIN) {
-      onUnlock();
-    } else if (value.length >= ADMIN_PIN.length) {
-      setError(true);
-      setTimeout(() => setError(false), 600);
+  const entrar = async () => {
+    if (pin.length < PIN_MINIMO || verificando) return;
+    setVerificando(true);
+    setError("");
+    try {
+      await onUnlock(pin);
+    } catch (e) {
+      setError(e.message || "PIN incorrecto");
       setPin("");
+    } finally {
+      setVerificando(false);
     }
   };
 
   const press = (d) => {
-    const next = (pin + d).slice(0, ADMIN_PIN.length);
-    setPin(next);
-    if (next.length === ADMIN_PIN.length) tryUnlock(next);
+    if (verificando) return;
+    setError("");
+    setPin((p) => (p + d).slice(0, PIN_MAXIMO));
   };
+
+  const tecla = "aspect-square rounded-2xl bg-[#3a342c] text-[#FBF6EC] text-xl font-medium hover:bg-[#464036] transition disabled:opacity-50";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#332A21] to-[#211B16] flex items-center justify-center px-5">
@@ -31,41 +39,44 @@ export function PinScreen({ onUnlock, onBack }) {
         <h2 className="font-display text-xl text-[#FBF6EC] mb-1">Panel de mamá</h2>
         <p className="text-[#9c9082] text-sm mb-7">Ingresa el PIN para entrar</p>
 
-        <div className={`flex justify-center gap-3 mb-8 ${error ? "animate-pulse" : ""}`}>
-          {Array.from({ length: ADMIN_PIN.length }).map((_, i) => (
+        <div className={`flex justify-center gap-3 mb-3 h-4 ${error ? "animate-pulse" : ""}`}>
+          {Array.from({ length: Math.max(PIN_MINIMO, pin.length) }).map((_, i) => (
             <div
               key={i}
               className="w-3.5 h-3.5 rounded-full border-2"
               style={{
                 borderColor: error ? "#C1452D" : "#E0A95C",
-                backgroundColor: i < pin.length ? (error ? "#C1452D" : "#E0A95C") : "transparent",
+                backgroundColor: i < pin.length ? "#E0A95C" : "transparent",
               }}
             />
           ))}
         </div>
+        <p className="text-[#E07a62] text-sm h-5 mb-4" role="alert">
+          {error}
+        </p>
 
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
-            <button
-              key={d}
-              onClick={() => press(d)}
-              className="aspect-square rounded-2xl bg-[#3a342c] text-[#FBF6EC] text-xl font-medium hover:bg-[#464036] transition"
-            >
+            <button key={d} onClick={() => press(d)} disabled={verificando} className={tecla}>
               {d}
             </button>
           ))}
-          <div />
-          <button
-            onClick={() => press("0")}
-            className="aspect-square rounded-2xl bg-[#3a342c] text-[#FBF6EC] text-xl font-medium hover:bg-[#464036] transition"
-          >
-            0
-          </button>
           <button
             onClick={() => setPin(pin.slice(0, -1))}
+            disabled={verificando}
             className="aspect-square rounded-2xl text-[#9c9082] text-sm font-medium hover:bg-[#3a342c] transition"
           >
             Borrar
+          </button>
+          <button onClick={() => press("0")} disabled={verificando} className={tecla}>
+            0
+          </button>
+          <button
+            onClick={entrar}
+            disabled={pin.length < PIN_MINIMO || verificando}
+            className="aspect-square rounded-2xl bg-terracota text-white text-sm font-semibold transition disabled:bg-[#3a342c] disabled:text-[#6f665a] flex items-center justify-center"
+          >
+            {verificando ? <Loader2 size={20} className="animate-spin" /> : "Entrar"}
           </button>
         </div>
 
