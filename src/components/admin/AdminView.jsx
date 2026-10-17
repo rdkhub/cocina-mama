@@ -376,6 +376,7 @@ export function AdminView({ onBack }) {
           {tab === "platos" && (
             <PlatosTab
               platos={platos}
+              proteinas={proteinas}
               onGuardar={handleGuardarPlato}
               onCambiarActivo={handleCambiarActivo}
               onSubirFoto={subirFotoPlato}

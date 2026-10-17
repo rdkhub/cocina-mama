@@ -9,6 +9,7 @@ import { OrderConfirmation } from "./OrderConfirmation";
 import { Field, SelectCard, inputStyle } from "../ui";
 import { PAY_LABELS, soles } from "../../utils/pedidos";
 import { WHATSAPP_URL } from "../../utils/contacto";
+import { fotoDePlato } from "../../lib/catalogo";
 import { Store, MapPin, MessageCircle } from "lucide-react";
 
 const CLAVE_CLIENTE = "cm_cliente";
@@ -125,6 +126,7 @@ export function ClientView() {
       return {
         key: "menu-" + key,
         plato: m.segundo.plato,
+        foto: fotoDePlato(m.segundo.plato, m.proteina),
         titulo: m.segundo.plato.nombre.trim(),
         detalle: detalles.join(" · "),
         precioUnit: precioMenu,
@@ -277,9 +279,41 @@ export function ClientView() {
       <MenuHero menuHoy={menuHoy} onAdmin={abrirAdmin} />
 
       <main className="max-w-md mx-auto px-5 -mt-8 relative z-10">
-        {/* Paso 1: entrada */}
+        {/* Paso 1: recojo o delivery (define el precio de cada menú) */}
+        <Paso numero={1} titulo="¿Recojo o delivery?" ayuda="El precio del menú depende de esto." id="paso-modo">
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { id: "recojo", texto: "Recojo en local", Icono: Store, precio: dia.precioRecojo },
+              { id: "delivery", texto: "Delivery", Icono: MapPin, precio: dia.precioDelivery },
+            ].map(({ id, texto, Icono, precio }) => {
+              const activo = modo === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setModo(id)}
+                  aria-pressed={activo}
+                  className={`rounded-2xl border-2 bg-white px-3 py-3.5 flex flex-col items-center gap-1 transition active:scale-[0.98] ${
+                    activo ? "border-terracota shadow-active" : "border-transparent shadow-card"
+                  }`}
+                >
+                  <Icono size={20} className={activo ? "text-terracota" : "text-texto-terciario"} />
+                  <span className={`text-[14px] ${activo ? "font-semibold text-tinta" : "font-medium text-texto-secundario"}`}>{texto}</span>
+                  <span className={`font-mono text-[13px] ${activo ? "text-terracota font-semibold" : "text-texto-terciario"}`}>
+                    {soles(precio)} el menú
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {modo === "delivery" && (
+            <p className="text-[12.5px] text-texto-terciario mt-2 ml-1 animate-fade">Te pedimos la dirección al final, junto con tus datos.</p>
+          )}
+        </Paso>
+
+        {/* Paso 2: entrada */}
         {entradasDisp.length > 0 && (
-          <Paso numero={1} titulo="Elige tu entrada" ayuda="Va incluida gratis con tu plato de fondo." id="paso-entrada">
+          <Paso numero={2} titulo="Elige tu entrada" ayuda="Va incluida gratis con tu plato de fondo." id="paso-entrada">
             <div className="grid grid-cols-2 gap-2.5">
               {entradasDisp.map((x) => (
                 <TarjetaEntrada
@@ -304,9 +338,9 @@ export function ClientView() {
           </Paso>
         )}
 
-        {/* Paso 2: segundo */}
+        {/* Paso 3: segundo */}
         <Paso
-          numero={entradasDisp.length > 0 ? 2 : 1}
+          numero={entradasDisp.length > 0 ? 3 : 2}
           titulo="Elige tu plato de fondo"
           ayuda="Toca un plato para ver sus opciones."
           id="paso-segundo"
@@ -334,7 +368,9 @@ export function ClientView() {
             disabled={!puedeAgregar}
             className="btn-cta w-full mt-3.5 bg-terracota disabled:bg-arena-hover disabled:shadow-none hover:bg-terracota-oscura disabled:text-texto-terciario text-white font-semibold rounded-xl py-3 text-[14.5px] transition"
           >
-            {segundoActual ? `Agregar al pedido${precioMenu ? ` · ${soles(precioMenu)}` : ""}` : "Elige un plato arriba"}
+            {segundoActual
+              ? `Agregar al pedido${precioMenu ? ` · ${soles(precioMenu)}` : ""}${modo === "delivery" ? " (delivery)" : ""}`
+              : "Elige un plato arriba"}
           </button>
         </Paso>
 
@@ -351,9 +387,9 @@ export function ClientView() {
           </div>
         )}
 
-        {/* Paso 3: extras */}
+        {/* Paso 4: extras */}
         {extrasDisp.length > 0 && (
-          <Paso numero={(entradasDisp.length > 0 ? 1 : 0) + 2} titulo="¿Algo más?" ayuda="Postres, bebidas y adicionales, cada uno aparte." id="paso-extras">
+          <Paso numero={(entradasDisp.length > 0 ? 1 : 0) + 3} titulo="¿Algo más?" ayuda="Postres, bebidas y adicionales, cada uno aparte." id="paso-extras">
             <div className="space-y-2">
               {extrasDisp.map((x) => (
                 <FilaExtra
@@ -400,13 +436,6 @@ export function ClientView() {
 
         {/* Entrega, pago y datos */}
         <div className="space-y-5">
-          <Field label="Recojo o delivery">
-            <div className="grid grid-cols-2 gap-2">
-              <SelectCard active={modo === "recojo"} onClick={() => setModo("recojo")} text="Recojo en local" compact icon={<Store size={15} />} />
-              <SelectCard active={modo === "delivery"} onClick={() => setModo("delivery")} text="Delivery" compact icon={<MapPin size={15} />} />
-            </div>
-          </Field>
-
           {modo === "delivery" && (
             <Field label="Dirección de entrega">
               <input className={inputStyle} value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Jr. Las Flores 123, dpto 4" />
