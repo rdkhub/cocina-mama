@@ -4,6 +4,7 @@ import React, { useRef, useState } from "react";
 import { Check, Minus, Plus, Ban } from "lucide-react";
 import { FotoPlato } from "../ui";
 import { soles } from "../../utils/pedidos";
+import { fotoDePlato } from "../../lib/catalogo";
 
 function SelloAgotado() {
   return (
@@ -66,6 +67,8 @@ export function TarjetaEntrada({ plato, agotado, activo, onClick }) {
 export function TarjetaSegundo({ plato, item, agotado, activo, onClick, proteina, onProteina, arroz, onArroz }) {
   const [pop, lanzar, fin] = usePop();
   const opciones = plato.requiereProteina ? item.proteinas : [];
+  // Si ya eligió proteína y hay foto para ella, se muestra esa en vez de la base.
+  const fotoProteina = activo && proteina ? plato.fotosProteina?.[proteina]?.url : "";
   return (
     <div
       onAnimationEnd={fin}
@@ -84,7 +87,12 @@ export function TarjetaSegundo({ plato, item, agotado, activo, onClick, proteina
         className={`w-full flex items-stretch text-left ${agotado ? "" : "active:bg-crema-hover"}`}
       >
         <div className={`relative shrink-0 ${agotado ? "grayscale" : ""}`}>
-          <FotoPlato plato={plato} rounded="rounded-none" className="w-28 h-28" iconSize={36} />
+          <FotoPlato plato={plato} src={fotoDePlato(plato, activo ? proteina : "")} rounded="rounded-none" className="w-28 h-28" iconSize={36} />
+          {fotoProteina && (
+            <span className="absolute bottom-1.5 left-1.5 right-1.5 truncate bg-tinta/80 text-white text-[10.5px] font-semibold rounded-md px-1.5 py-0.5 text-center animate-fade">
+              {proteina}
+            </span>
+          )}
         </div>
         <div className="flex-1 min-w-0 px-3.5 py-3 flex flex-col justify-center">
           <div className="text-[15px] font-semibold text-tinta leading-snug">{plato.nombre}</div>

@@ -31,13 +31,13 @@ function Stepper({ cantidad, onCambiar, nombre }) {
 }
 
 // Lista editable de lo que lleva el cliente. "lineas" viene armado desde
-// ClientView: { key, plato, titulo, detalle, precioUnit, cantidad, problema, onCambiar }.
+// ClientView: { key, plato, foto, titulo, detalle, precioUnit, cantidad, problema, onCambiar }.
 export function ResumenPedido({ lineas, total, compacto }) {
   return (
     <div className="bg-white rounded-2xl shadow-card border border-[#eee2cb] divide-y divide-divisor">
       {lineas.map((l) => (
         <div key={l.key} className="flex items-center gap-3 p-3">
-          {!compacto && <FotoPlato plato={l.plato} className="w-12 h-12 shrink-0" iconSize={20} />}
+          {!compacto && <FotoPlato plato={l.plato} src={l.foto} className="w-12 h-12 shrink-0" iconSize={20} />}
           <div className="flex-1 min-w-0">
             <div className="text-[14px] font-semibold text-tinta leading-snug">{l.titulo}</div>
             {l.detalle && <div className="text-[12.5px] text-texto-secundario leading-snug">{l.detalle}</div>}

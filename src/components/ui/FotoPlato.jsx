@@ -7,21 +7,27 @@ const ICONOS = { entrada: Salad, segundo: Soup, postre: CakeSlice, bebida: CupSo
 
 // Foto del plato. Si no tiene foto (o no carga), muestra un fondo con el
 // color de su categoría y un ícono dibujado, para que nunca se vea un hueco.
-export function FotoPlato({ plato, className = "", iconSize = 34, rounded = "rounded-xl" }) {
-  const [fallo, setFallo] = useState(false);
+// `src` permite mostrar otra foto del mismo plato (por ejemplo, la de la
+// proteína elegida); si no se pasa, se usa la foto base.
+export function FotoPlato({ plato, src, className = "", iconSize = 34, rounded = "rounded-xl" }) {
+  const url = src || plato?.fotoUrl || "";
+  // Se guarda qué URL falló, así al cambiar de foto se vuelve a intentar.
+  const [falloUrl, setFalloUrl] = useState(null);
+  const fallo = falloUrl === url;
   const cat = plato?.categoria || "segundo";
   const Icono = ICONOS[cat] || Soup;
   const [a, b] = COLORES_CATEGORIA[cat] || COLORES_CATEGORIA.segundo;
 
-  if (plato?.fotoUrl && !fallo) {
+  if (url && !fallo) {
     return (
       <img
-        src={plato.fotoUrl}
+        key={url}
+        src={url}
         alt={plato.nombre}
         loading="lazy"
         decoding="async"
-        onError={() => setFallo(true)}
-        className={`object-cover bg-arena ${rounded} ${className}`}
+        onError={() => setFalloUrl(url)}
+        className={`object-cover bg-arena animate-fade ${rounded} ${className}`}
       />
     );
   }

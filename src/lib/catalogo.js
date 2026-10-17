@@ -19,6 +19,34 @@ export const categoriaInfo = (id) => CATEGORIAS.find((c) => c.id === id) || CATE
 
 export const PRECIOS_POR_DEFECTO = { precioRecojo: 11, precioDelivery: 13, precioEntradaExtra: 3 };
 
+// fotos_proteina llega como { "Chuleta": { url, path } }. Se limpia por si
+// alguna entrada vino incompleta.
+function normalizarFotosProteina(v) {
+  const out = {};
+  if (!v || typeof v !== "object") return out;
+  Object.entries(v).forEach(([prot, f]) => {
+    if (f && typeof f.url === "string" && f.url) out[prot] = { url: f.url, path: f.path || "" };
+  });
+  return out;
+}
+
+// Foto que corresponde mostrar: la de la proteína elegida si existe, si no la base.
+export function fotoDePlato(plato, proteina) {
+  if (proteina && plato?.fotosProteina?.[proteina]?.url) return plato.fotosProteina[proteina].url;
+  return plato?.fotoUrl || "";
+}
+
+// ¿Algún plato (aparte de `exceptoId`) usa este archivo? Varias fichas del
+// catálogo comparten la misma foto, así que no se borra si sigue en uso.
+export function fotoEnUso(platos, path, exceptoId) {
+  if (!path) return false;
+  return platos.some(
+    (p) =>
+      p.id !== exceptoId &&
+      (p.fotoPath === path || Object.values(p.fotosProteina || {}).some((f) => f.path === path))
+  );
+}
+
 function rowToPlato(r) {
   return {
     id: r.id,
@@ -27,6 +55,7 @@ function rowToPlato(r) {
     descripcion: r.descripcion || "",
     fotoUrl: r.foto_url || "",
     fotoPath: r.foto_path || "",
+    fotosProteina: normalizarFotosProteina(r.fotos_proteina),
     requiereProteina: !!r.requiere_proteina,
     permiteArroz: !!r.permite_arroz,
     precioExtra: Number(r.precio_extra || 0),
@@ -70,6 +99,7 @@ export async function guardarPlato(plato) {
     descripcion: (plato.descripcion || "").trim(),
     foto_url: plato.fotoUrl || null,
     foto_path: plato.fotoPath || null,
+    fotos_proteina: plato.fotosProteina || {},
     requiere_proteina: plato.categoria === "segundo" && !!plato.requiereProteina,
     permite_arroz: plato.categoria === "segundo" && !!plato.permiteArroz,
     precio_extra: Number(plato.precioExtra || 0),

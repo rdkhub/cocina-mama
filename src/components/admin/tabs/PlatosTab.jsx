@@ -3,7 +3,7 @@
 import React, { useState, useRef } from "react";
 import { Plus, Pencil, Ban, RotateCcw, Camera, Loader2, X } from "lucide-react";
 import { FotoPlato, Field, inputStyle, Sheet, Switch, EmptyState } from "../../ui";
-import { CATEGORIAS } from "../../../lib/catalogo";
+import { CATEGORIAS, fotoEnUso } from "../../../lib/catalogo";
 import { comprimirFoto } from "../../../lib/imagen";
 
 const PLATO_VACIO = {
@@ -13,18 +13,30 @@ const PLATO_VACIO = {
   descripcion: "",
   fotoUrl: "",
   fotoPath: "",
+  fotosProteina: {},
   requiereProteina: false,
   permiteArroz: false,
   precioExtra: 0,
   activo: true,
 };
 
-export function PlatosTab({ platos, onGuardar, onCambiarActivo, onSubirFoto, onBorrarFoto, showToast }) {
+export function PlatosTab({ platos, proteinas = [], onGuardar, onCambiarActivo, onSubirFoto, onBorrarFoto, showToast }) {
   const [filtro, setFiltro] = useState("todos");
   const [editando, setEditando] = useState(null); // objeto plato o null
   const [guardando, setGuardando] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [subiendoProteina, setSubiendoProteina] = useState(""); // nombre de la proteína que se está subiendo
   const fileRef = useRef(null);
+  const fileProteinaRef = useRef(null);
+  const proteinaDestino = useRef("");
+
+  // Borra un archivo viejo solo si ningún otro plato lo usa (hay fotos compartidas).
+  const borrarSiNoSeUsa = (path, plato) => {
+    if (!path) return;
+    const siguePuesto =
+      plato.fotoPath === path || Object.values(plato.fotosProteina || {}).some((f) => f.path === path);
+    if (!siguePuesto && !fotoEnUso(platos, path, plato.id)) onBorrarFoto(path);
+  };
 
   const lista = platos.filter((p) => filtro === "todos" || p.categoria === filtro).filter((p) => (filtro === "inactivos" ? !p.activo : true));
   const visibles = filtro === "inactivos" ? platos.filter((p) => !p.activo) : lista.filter((p) => p.activo || filtro === "todos");
@@ -51,7 +63,8 @@ export function PlatosTab({ platos, onGuardar, onCambiarActivo, onSubirFoto, onB
     try {
       const blob = await comprimirFoto(file);
       const { url, path } = await onSubirFoto(blob, editando.nombre || "plato");
-      if (editando.fotoPath) onBorrarFoto(editando.fotoPath);
+      const nuevo = { ...editando, fotoUrl: url, fotoPath: path };
+      borrarSiNoSeUsa(editando.fotoPath, nuevo);
       setEditando((prev) => ({ ...prev, fotoUrl: url, fotoPath: path }));
     } catch (e) {
       showToast(e.message || "No se pudo subir la foto.");
@@ -59,6 +72,38 @@ export function PlatosTab({ platos, onGuardar, onCambiarActivo, onSubirFoto, onB
       setSubiendoFoto(false);
     }
   };
+
+  const elegirFotoProteina = async (file) => {
+    const prot = proteinaDestino.current;
+    if (!file || !prot) return;
+    setSubiendoProteina(prot);
+    try {
+      const blob = await comprimirFoto(file);
+      const { url, path } = await onSubirFoto(blob, `${editando.nombre || "plato"}-${prot}`);
+      const anterior = editando.fotosProteina?.[prot]?.path;
+      const fotosProteina = { ...(editando.fotosProteina || {}), [prot]: { url, path } };
+      borrarSiNoSeUsa(anterior, { ...editando, fotosProteina });
+      setEditando((prev) => ({ ...prev, fotosProteina: { ...(prev.fotosProteina || {}), [prot]: { url, path } } }));
+    } catch (e) {
+      showToast(e.message || "No se pudo subir la foto.");
+    } finally {
+      setSubiendoProteina("");
+      if (fileProteinaRef.current) fileProteinaRef.current.value = "";
+    }
+  };
+
+  const quitarFotoProteina = (prot) =>
+    setEditando((prev) => {
+      const fotosProteina = { ...(prev.fotosProteina || {}) };
+      delete fotosProteina[prot];
+      return { ...prev, fotosProteina };
+    });
+
+  // Proteínas que se muestran en el editor: las de la tabla y, por si acaso,
+  // las que ya tienen foto aunque se hayan renombrado.
+  const nombresProteina = editando
+    ? Array.from(new Set([...proteinas.map((p) => p.nombre), ...Object.keys(editando.fotosProteina || {})]))
+    : [];
 
   return (
     <div className="pb-10">
@@ -93,7 +138,12 @@ export function PlatosTab({ platos, onGuardar, onCambiarActivo, onSubirFoto, onB
               <FotoPlato plato={p} rounded="rounded-none" className="w-full aspect-[4/3]" />
               <div className="px-2.5 py-2">
                 <div className="text-[13px] font-medium text-tinta leading-snug line-clamp-2">{p.nombre}</div>
-                {p.categoria === "segundo" && p.requiereProteina && <div className="text-[11px] text-ocre mt-0.5">Con proteína</div>}
+                {p.categoria === "segundo" && p.requiereProteina && (
+                  <div className="text-[11px] text-ocre mt-0.5">
+                    Con proteína
+                    {Object.keys(p.fotosProteina || {}).length > 0 && ` · ${Object.keys(p.fotosProteina).length} foto${Object.keys(p.fotosProteina).length > 1 ? "s" : ""}`}
+                  </div>
+                )}
                 {(p.categoria === "postre" || p.categoria === "bebida" || p.categoria === "adicional") && (
                   <div className="text-[11px] text-ocre mt-0.5">S/ {p.precioExtra.toFixed(2)}</div>
                 )}
@@ -180,6 +230,58 @@ export function PlatosTab({ platos, onGuardar, onCambiarActivo, onSubirFoto, onB
                   <span className="text-[14px] text-tinta">Se elige proteína</span>
                   <Switch checked={editando.requiereProteina} onChange={(v) => setEditando({ ...editando, requiereProteina: v })} />
                 </div>
+                {editando.requiereProteina && nombresProteina.length > 0 && (
+                  <div className="bg-crema rounded-xl px-3.5 py-3">
+                    <div className="text-[14px] text-tinta font-medium">Foto por proteína (opcional)</div>
+                    <p className="text-[12.5px] text-texto-secundario mb-2.5">
+                      Cuando el cliente elige la proteína, ve esta foto. Si no hay, se usa la foto principal.
+                    </p>
+                    <div className="space-y-2">
+                      {nombresProteina.map((prot) => {
+                        const foto = editando.fotosProteina?.[prot];
+                        const cargando = subiendoProteina === prot;
+                        return (
+                          <div key={prot} className="flex items-center gap-2.5 bg-white rounded-xl p-1.5 pr-2">
+                            <FotoPlato plato={editando} src={foto?.url} className={`w-12 h-12 shrink-0 ${foto ? "" : "opacity-40"}`} iconSize={18} />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[13.5px] text-tinta truncate">{prot}</div>
+                              <div className="text-[11.5px] text-texto-terciario">{foto ? "Con foto propia" : "Usa la foto principal"}</div>
+                            </div>
+                            {foto && (
+                              <button
+                                type="button"
+                                onClick={() => quitarFotoProteina(prot)}
+                                className="w-8 h-8 rounded-full border border-arena text-texto-secundario flex items-center justify-center"
+                                aria-label={`Quitar foto de ${prot}`}
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              disabled={!!subiendoProteina}
+                              onClick={() => {
+                                proteinaDestino.current = prot;
+                                fileProteinaRef.current?.click();
+                              }}
+                              className="w-8 h-8 rounded-full bg-terracota text-white flex items-center justify-center disabled:opacity-60"
+                              aria-label={`${foto ? "Cambiar" : "Subir"} foto de ${prot}`}
+                            >
+                              {cargando ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <input
+                      ref={fileProteinaRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => elegirFotoProteina(e.target.files?.[0])}
+                    />
+                  </div>
+                )}
                 <div className="flex items-center justify-between bg-crema rounded-xl px-3.5 py-3">
                   <span className="text-[14px] text-tinta">Se puede pedir sin arroz</span>
                   <Switch checked={editando.permiteArroz} onChange={(v) => setEditando({ ...editando, permiteArroz: v })} />
