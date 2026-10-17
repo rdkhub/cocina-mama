@@ -278,7 +278,7 @@ export function ClientView() {
     <div className={`min-h-screen bg-crema ${hayAlgo ? "pb-28" : "pb-10"}`}>
       <MenuHero menuHoy={menuHoy} onAdmin={abrirAdmin} />
 
-      <main className="max-w-md mx-auto px-5 -mt-8 relative z-10">
+      <main className="max-w-md mx-auto px-5 pt-7">
         {/* Paso 1: recojo o delivery (define el precio de cada menú) */}
         <Paso numero={1} titulo="¿Recojo o delivery?" ayuda="El precio del menú depende de esto." id="paso-modo">
           <div className="grid grid-cols-2 gap-2.5">
