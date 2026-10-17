@@ -1,61 +1,36 @@
--- Parte 2: cerrar la base. Se aplica cuando el panel ya entra con Supabase Auth
--- (si se aplica antes, la versión vieja de la app pierde el panel).
+-- Parte 2: cerrar la base (aplicada el 17/10/2026, después del deploy del login).
+-- Se modifican las políticas existentes en vez de borrarlas.
 
--- Quitar todas las políticas abiertas de las tablas de la app.
-do $$
-declare pol record;
-begin
-  for pol in
-    select tablename, policyname from pg_policies
-    where schemaname = 'public'
-      and tablename in ('orders', 'platos', 'menu_dia', 'menu_dia_items', 'ajustes', 'menu', 'proteinas', 'platos_frecuentes')
-  loop
-    execute format('drop policy %I on public.%I', pol.policyname, pol.tablename);
-  end loop;
-  for pol in
-    select policyname from pg_policies
-    where schemaname = 'storage' and tablename = 'objects' and policyname like 'platos:%'
-  loop
-    execute format('drop policy %I on storage.objects', pol.policyname);
-  end loop;
-end $$;
+-- Pedidos: el cliente solo crea; leer, editar y borrar es del admin.
+alter policy "Cualquiera puede leer pedidos" on public.orders to authenticated using (public.es_admin());
+alter policy "Cualquiera puede leer pedidos" on public.orders rename to "Admin lee pedidos";
+alter policy "Cualquiera puede actualizar pedidos" on public.orders to authenticated using (public.es_admin()) with check (public.es_admin());
+alter policy "Cualquiera puede actualizar pedidos" on public.orders rename to "Admin edita pedidos";
+alter policy "Cualquiera puede borrar pedidos" on public.orders to authenticated using (public.es_admin());
+alter policy "Cualquiera puede borrar pedidos" on public.orders rename to "Admin borra pedidos";
+alter policy "Cualquiera puede crear pedidos" on public.orders to anon, authenticated with check (coalesce(listo, false) = false or public.es_admin());
+alter policy "Cualquiera puede crear pedidos" on public.orders rename to "Clientes crean pedidos";
 
--- Pedidos: el cliente solo puede crear (el trigger validar_pedido revisa y
--- calcula el total). Leer, marcar listo/pagado y borrar es solo del admin.
-create policy "Clientes crean pedidos" on public.orders
-  for insert to anon, authenticated
-  with check (coalesce(listo, false) = false or public.es_admin());
-create policy "Admin lee pedidos" on public.orders
-  for select to authenticated using (public.es_admin());
-create policy "Admin edita pedidos" on public.orders
-  for update to authenticated using (public.es_admin()) with check (public.es_admin());
-create policy "Admin borra pedidos" on public.orders
-  for delete to authenticated using (public.es_admin());
+-- Catálogo y menú: la lectura sigue pública; escribir es solo del admin.
+alter policy "Cualquiera puede editar ajustes" on public.ajustes to authenticated using (public.es_admin()) with check (public.es_admin());
+alter policy "Cualquiera puede actualizar el menú" on public.menu to authenticated using (public.es_admin()) with check (public.es_admin());
+alter policy "Cualquiera puede crear menu_dia" on public.menu_dia to authenticated with check (public.es_admin());
+alter policy "Cualquiera puede editar menu_dia" on public.menu_dia to authenticated using (public.es_admin()) with check (public.es_admin());
+alter policy "Cualquiera puede crear items" on public.menu_dia_items to authenticated with check (public.es_admin());
+alter policy "Cualquiera puede editar items" on public.menu_dia_items to authenticated using (public.es_admin()) with check (public.es_admin());
+alter policy "Cualquiera puede quitar items" on public.menu_dia_items to authenticated using (public.es_admin());
+alter policy "Cualquiera puede crear platos" on public.platos to authenticated with check (public.es_admin());
+alter policy "Cualquiera puede editar platos" on public.platos to authenticated using (public.es_admin()) with check (public.es_admin());
+alter policy "Cualquiera puede crear platos frecuentes" on public.platos_frecuentes to authenticated with check (public.es_admin());
+alter policy "Cualquiera puede actualizar platos frecuentes" on public.platos_frecuentes to authenticated using (public.es_admin()) with check (public.es_admin());
+alter policy "Cualquiera puede crear proteinas" on public.proteinas to authenticated with check (public.es_admin());
 
--- Catálogo y menú: lectura pública, escritura solo admin.
-do $$
-declare t text;
-begin
-  foreach t in array array['platos', 'menu_dia', 'menu_dia_items', 'ajustes', 'menu', 'proteinas', 'platos_frecuentes'] loop
-    execute format('create policy %I on public.%I for select to anon, authenticated using (true)', 'Todos leen ' || t, t);
-    execute format('create policy %I on public.%I for insert to authenticated with check (public.es_admin())', 'Admin crea ' || t, t);
-    execute format('create policy %I on public.%I for update to authenticated using (public.es_admin()) with check (public.es_admin())', 'Admin edita ' || t, t);
-    execute format('create policy %I on public.%I for delete to authenticated using (public.es_admin())', 'Admin borra ' || t, t);
-  end loop;
-end $$;
+-- Fotos: se ven públicas; subir, cambiar y borrar es del admin.
+alter policy "platos: subir fotos" on storage.objects to authenticated with check (bucket_id = 'platos' and public.es_admin());
+alter policy "platos: cambiar fotos" on storage.objects to authenticated using (bucket_id = 'platos' and public.es_admin()) with check (bucket_id = 'platos' and public.es_admin());
+alter policy "platos: borrar fotos" on storage.objects to authenticated using (bucket_id = 'platos' and public.es_admin());
 
--- Fotos: cualquiera las ve (bucket público), solo el admin sube/cambia/borra.
-create policy "platos: ver fotos" on storage.objects
-  for select to anon, authenticated using (bucket_id = 'platos');
-create policy "platos: subir fotos" on storage.objects
-  for insert to authenticated with check (bucket_id = 'platos' and public.es_admin());
-create policy "platos: cambiar fotos" on storage.objects
-  for update to authenticated using (bucket_id = 'platos' and public.es_admin()) with check (bucket_id = 'platos' and public.es_admin());
-create policy "platos: borrar fotos" on storage.objects
-  for delete to authenticated using (bucket_id = 'platos' and public.es_admin());
-
--- Notificaciones: solo el admin registra/quita celulares (si no, cualquiera
--- podría suscribirse y recibir los datos de los pedidos).
+-- Notificaciones: solo el admin registra un celular.
 create or replace function public.registrar_suscripcion(p_endpoint text, p_p256dh text, p_auth text, p_dispositivo text default '')
 returns void
 language plpgsql
@@ -76,21 +51,7 @@ begin
 end;
 $$;
 
-create or replace function public.quitar_suscripcion(p_endpoint text)
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if not public.es_admin() then
-    raise exception 'NO_AUTORIZADO';
-  end if;
-  delete from public.push_suscripciones where endpoint = p_endpoint;
-end;
-$$;
-
-revoke execute on function public.registrar_suscripcion(text, text, text, text) from anon, public;
 revoke execute on function public.quitar_suscripcion(text) from anon, public;
-grant execute on function public.registrar_suscripcion(text, text, text, text) to authenticated;
+revoke execute on function public.registrar_suscripcion(text, text, text, text) from anon, public;
 grant execute on function public.quitar_suscripcion(text) to authenticated;
+grant execute on function public.registrar_suscripcion(text, text, text, text) to authenticated;
