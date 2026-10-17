@@ -3,19 +3,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { supabase } from "../supabaseClient";
 import { todayKey, loadOrders, createOrder, updateOrder, deleteOrder } from "../data";
 import { cargarPlatos, cargarMenuDia, cargarProteinas, cargarAjustes, CATEGORIAS_EXTRA } from "../lib/catalogo";
+import { entrarConPin, salir, sesionAdminActiva } from "../lib/auth";
 
 const AppContext = createContext(null);
 
-// El PIN se pide una vez por celular. Después la app recuerda que ese
-// celular es del local (así, al tocar una notificación entra directo).
-const CLAVE_DESBLOQUEO = "cm_admin_desbloqueado";
-const leerDesbloqueo = () => {
-  try {
-    return localStorage.getItem(CLAVE_DESBLOQUEO) === "1";
-  } catch {
-    return false;
-  }
-};
+// Clave vieja: antes el desbloqueo se guardaba solo en el navegador. Se
+// borra para que nadie quede "desbloqueado" sin haber puesto el PIN real.
+const CLAVE_DESBLOQUEO_VIEJA = "cm_admin_desbloqueado";
 
 // Lee ?admin=1 y ?pedido=<id> de un link (o de la notificación tocada).
 function leerDestino(url) {
@@ -34,8 +28,11 @@ export function AppProvider({ children }) {
   const [menuDia, setMenuDia] = useState({ dia: null, items: [] });
   const [ajustes, setAjustes] = useState({ plantillaSaludo: "", plantillaCierre: "" });
   const [fechaHoy, setFechaHoy] = useState(todayKey());
-  const [desbloqueado, setDesbloqueado] = useState(leerDesbloqueo);
-  const [view, setView] = useState(() => (destinoInicial.admin ? (leerDesbloqueo() ? "admin" : "pin") : "cliente"));
+  // La sesión de admin la valida Supabase (PIN = contraseña del usuario admin).
+  const [desbloqueado, setDesbloqueado] = useState(false);
+  const desbloqueadoRef = useRef(false);
+  const [authListo, setAuthListo] = useState(false);
+  const [view, setView] = useState("cliente");
   const [pedidoResaltado, setPedidoResaltado] = useState(destinoInicial.pedido);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -55,27 +52,61 @@ export function AppProvider({ children }) {
     toastTimer.current = setTimeout(() => setToast(null), 3800);
   }, []);
 
-  const desbloquear = useCallback(() => {
-    try {
-      localStorage.setItem(CLAVE_DESBLOQUEO, "1");
-    } catch {
-      /* modo incógnito: se pedirá el PIN otra vez */
-    }
-    setDesbloqueado(true);
-    setView("admin");
+  const marcarDesbloqueo = useCallback((ok) => {
+    desbloqueadoRef.current = ok;
+    setDesbloqueado(ok);
   }, []);
 
-  const bloquear = useCallback(() => {
+  // Lanza un error si el PIN no es correcto (lo muestra PinScreen).
+  const desbloquear = useCallback(
+    async (pin) => {
+      await entrarConPin(pin);
+      marcarDesbloqueo(true);
+      setView("admin");
+    },
+    [marcarDesbloqueo]
+  );
+
+  const bloquear = useCallback(async () => {
+    marcarDesbloqueo(false);
+    setOrders([]);
+    setView("cliente");
     try {
-      localStorage.removeItem(CLAVE_DESBLOQUEO);
+      await salir();
+    } catch {
+      /* sin conexión: la sesión local igual se borra */
+    }
+  }, [marcarDesbloqueo]);
+
+  const abrirAdmin = useCallback(() => setView(desbloqueadoRef.current ? "admin" : "pin"), []);
+
+  // Al abrir la app: ¿este celular ya tiene sesión de admin?
+  useEffect(() => {
+    try {
+      localStorage.removeItem(CLAVE_DESBLOQUEO_VIEJA);
     } catch {
       /* nada */
     }
-    setDesbloqueado(false);
-    setView("cliente");
-  }, []);
-
-  const abrirAdmin = useCallback(() => setView(leerDesbloqueo() ? "admin" : "pin"), []);
+    let vivo = true;
+    sesionAdminActiva()
+      .then((ok) => {
+        if (!vivo) return;
+        marcarDesbloqueo(ok);
+        if (destinoInicial.admin) setView(ok ? "admin" : "pin");
+      })
+      .finally(() => vivo && setAuthListo(true));
+    const { data } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === "SIGNED_OUT") {
+        marcarDesbloqueo(false);
+        setOrders([]);
+        setView((v) => (v === "admin" ? "pin" : v));
+      }
+    });
+    return () => {
+      vivo = false;
+      data.subscription.unsubscribe();
+    };
+  }, [destinoInicial, marcarDesbloqueo]);
 
   // Notificación tocada con la app ya abierta: el service worker avisa aquí.
   useEffect(() => {
@@ -90,7 +121,13 @@ export function AppProvider({ children }) {
     return () => navigator.serviceWorker.removeEventListener("message", onMensaje);
   }, [abrirAdmin]);
 
-  const refreshOrders = useCallback(async () => setOrders(await loadOrders()), []);
+  // Los pedidos solo los ve el admin (la base de datos tampoco se los da a nadie más).
+  const refreshOrders = useCallback(async () => setOrders(desbloqueadoRef.current ? await loadOrders() : []), []);
+
+  // Recién entró o salió: cargar (o vaciar) los pedidos.
+  useEffect(() => {
+    if (authListo) refreshOrders();
+  }, [desbloqueado, authListo, refreshOrders]);
   const refreshPlatos = useCallback(async () => {
     try {
       setPlatos(await cargarPlatos());
@@ -195,7 +232,7 @@ export function AppProvider({ children }) {
         pagado: data.pago !== "fiado",
       };
       const saved = await createOrder(order);
-      setOrders((prev) => (prev.some((o) => o.id === saved.id) ? prev : [...prev, saved]));
+      if (desbloqueadoRef.current) refreshOrders();
       setJustSubmitted(saved);
       return true;
     } catch (e) {
@@ -264,7 +301,7 @@ export function AppProvider({ children }) {
     abrirAdmin,
     pedidoResaltado,
     setPedidoResaltado,
-    loading,
+    loading: loading || !authListo,
     submitting,
     justSubmitted,
     setJustSubmitted,

@@ -34,11 +34,21 @@ export async function loadOrders() {
   return data.map(rowToOrder);
 }
 
+// El cliente solo puede crear pedidos, no leerlos (los datos de los demás
+// clientes son privados). Por eso el id se genera aquí y no se pide la fila
+// de vuelta; el total que ve el cliente es el que calculó la pantalla, y la
+// base de datos guarda el suyo (validar_pedido).
+const nuevoUuid = () =>
+  crypto.randomUUID?.() ??
+  "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
+    (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+  );
+
 export async function createOrder(order) {
-  const row = orderToRow(order);
-  const { data, error } = await supabase.from("orders").insert(row).select().single();
+  const row = { id: nuevoUuid(), ...orderToRow(order) };
+  const { error } = await supabase.from("orders").insert(row);
   if (error) throw error;
-  return rowToOrder(data);
+  return { ...order, id: row.id, total: Number(order.totalEstimado) || 0, formato: 2 };
 }
 
 export async function updateOrder(id, patch) {

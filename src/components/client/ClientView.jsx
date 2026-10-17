@@ -230,6 +230,7 @@ export function ClientView() {
       notas: notas.trim(),
       fecha: menuHoy.fecha,
       formato: 2,
+      totalEstimado: totalPagar,
     });
   };
 
