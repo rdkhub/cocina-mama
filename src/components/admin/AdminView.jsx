@@ -28,6 +28,7 @@ import { SemanalTab } from "./tabs/SemanalTab";
 import { AjustesTab } from "./tabs/AjustesTab";
 import { CompartirMenu } from "./CompartirMenu";
 import { NuevoPedidoSheet } from "./NuevoPedidoSheet";
+import { CuadernoSheet } from "./CuadernoSheet";
 
 // AdminView es el "contenedor" del panel de mamá: guarda qué pestaña está
 // activa y coordina las acciones del catálogo y del menú de hoy. Los datos
@@ -52,6 +53,7 @@ export function AdminView({ onBack }) {
     handleOrderUpdate,
     handleOrderDelete,
     crearPedidoAdmin,
+    crearPedidosVarios,
     mensajeCompartido,
     setMensajeCompartido,
   } = useApp();
@@ -60,6 +62,7 @@ export function AdminView({ onBack }) {
   const [tab, setTab] = useState("pedidos"); // pedidos | menu | platos | deudas | historial | semanal | ajustes
   // Nuevo pedido de WhatsApp: se abre solo cuando el papá comparte un mensaje.
   const [nuevoPedido, setNuevoPedido] = useState({ open: false, texto: "" });
+  const [cuadernoAbierto, setCuadernoAbierto] = useState(false);
   useEffect(() => {
     if (!mensajeCompartido) return;
     setTab("pedidos");
@@ -394,6 +397,7 @@ export function AdminView({ onBack }) {
           {tab === "pedidos" && (
             <PedidosTab
               onNuevoPedido={() => setNuevoPedido({ open: true, texto: "" })}
+              onFotoCuaderno={() => setCuadernoAbierto(true)}
               todaysOrders={todaysOrders}
               totalVendidoHoy={totalVendidoHoy}
               onOrderUpdate={handleOrderUpdate}
@@ -463,6 +467,14 @@ export function AdminView({ onBack }) {
           {tab === "ajustes" && <AjustesTab ajustes={ajustes} onGuardarAjustes={handleGuardarAjustes} showToast={showToast} />}
         </main>
       </div>
+      <CuadernoSheet
+        open={cuadernoAbierto}
+        onClose={() => setCuadernoAbierto(false)}
+        menuHoy={menuHoy}
+        platos={platos}
+        todaysOrders={todaysOrders}
+        onGuardarVarios={crearPedidosVarios}
+      />
       <NuevoPedidoSheet
         open={nuevoPedido.open}
         textoInicial={nuevoPedido.texto}

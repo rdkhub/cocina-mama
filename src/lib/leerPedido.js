@@ -25,7 +25,7 @@ export function contextoDelMenu(menuHoy, platos = []) {
 }
 
 // Deja solo ids que existen hoy y valores válidos (la IA podría equivocarse).
-function limpiar(res, ctx) {
+export function limpiar(res, ctx) {
   const seg = new Map(ctx.segundos.map((s) => [s.id, s]));
   const ent = new Set(ctx.entradas.map((e) => e.id));
   const ext = new Set(ctx.extras.map((e) => e.id));
