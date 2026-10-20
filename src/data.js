@@ -92,6 +92,8 @@ function rowToOrder(row) {
     listo: row.listo,
     pagado: row.pagado,
     formato: Number(row.formato) || 1,
+    origen: row.origen || "app",
+    mensajeOriginal: row.mensaje_original || "",
   };
   order.total =
     order.formato >= 2
@@ -118,5 +120,7 @@ function orderToRow(order) {
     listo: order.listo,
     pagado: order.pagado,
     formato: 2,
+    origen: order.origen || "app",
+    mensaje_original: order.mensajeOriginal || "",
   };
 }

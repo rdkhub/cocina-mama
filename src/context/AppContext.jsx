@@ -11,10 +11,15 @@ const AppContext = createContext(null);
 // borra para que nadie quede "desbloqueado" sin haber puesto el PIN real.
 const CLAVE_DESBLOQUEO_VIEJA = "cm_admin_desbloqueado";
 
-// Lee ?admin=1 y ?pedido=<id> de un link (o de la notificación tocada).
+// Lee ?admin=1 y ?pedido=<id> de un link (o de la notificación tocada), y
+// ?texto=... cuando el papá comparte un mensaje de WhatsApp a la app.
 function leerDestino(url) {
   const params = new URL(url, window.location.origin).searchParams;
-  return { admin: params.has("admin") || params.has("pedido"), pedido: params.get("pedido") };
+  const compartido = ["titulo", "texto", "enlace"]
+    .map((k) => (params.get(k) || "").trim())
+    .filter(Boolean)
+    .join("\n");
+  return { admin: params.has("admin") || params.has("pedido") || !!compartido, pedido: params.get("pedido"), compartido };
 }
 
 // Estado global de la app: pedidos, catálogo de platos, menú de hoy y ajustes.
@@ -34,6 +39,8 @@ export function AppProvider({ children }) {
   const [authListo, setAuthListo] = useState(false);
   const [view, setView] = useState("cliente");
   const [pedidoResaltado, setPedidoResaltado] = useState(destinoInicial.pedido);
+  // Mensaje compartido desde WhatsApp, esperando a que el panel lo abra.
+  const [mensajeCompartido, setMensajeCompartido] = useState(destinoInicial.compartido);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [justSubmitted, setJustSubmitted] = useState(null);
@@ -115,6 +122,7 @@ export function AppProvider({ children }) {
       if (e.data?.tipo !== "abrir") return;
       const d = leerDestino(e.data.url);
       if (d.pedido) setPedidoResaltado(d.pedido);
+      if (d.compartido) setMensajeCompartido(d.compartido);
       if (d.admin) abrirAdmin();
     };
     navigator.serviceWorker.addEventListener("message", onMensaje);
@@ -254,6 +262,28 @@ export function AppProvider({ children }) {
     }
   };
 
+  // Pedido que el papá registra desde WhatsApp o a mano. Lanza el error para
+  // que la pantalla lo muestre.
+  const crearPedidoAdmin = async (data) => {
+    const order = {
+      ...data,
+      fecha: fechaHoy,
+      creadoEn: new Date().toISOString(),
+      listo: false,
+      pagado: data.pago !== "fiado",
+    };
+    try {
+      await createOrder(order);
+    } catch (e) {
+      const msg = String(e?.message || "");
+      if (msg.includes("AGOTADO")) throw new Error(`Agotado: ${msg.split("AGOTADO:")[1]?.trim() || "un plato"}. Cámbialo.`, { cause: e });
+      if (msg.includes("MENU_NO_DISPONIBLE")) throw new Error("Primero publica el menú de hoy.", { cause: e });
+      throw new Error("No se pudo guardar. Revisa tu conexión.", { cause: e });
+    }
+    await refreshOrders();
+    showToast(`Pedido de ${order.nombre} guardado`, "success");
+  };
+
   const handleOrderUpdate = async (id, patch) => {
     const previous = orders;
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
@@ -297,6 +327,9 @@ export function AppProvider({ children }) {
     setView,
     desbloqueado,
     desbloquear,
+    crearPedidoAdmin,
+    mensajeCompartido,
+    setMensajeCompartido,
     bloquear,
     abrirAdmin,
     pedidoResaltado,
