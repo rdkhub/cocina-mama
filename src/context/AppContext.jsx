@@ -284,6 +284,29 @@ export function AppProvider({ children }) {
     showToast(`Pedido de ${order.nombre} guardado`, "success");
   };
 
+  // Varios pedidos de una vez (foto del cuaderno). Devuelve los que fallaron.
+  const crearPedidosVarios = async (lista) => {
+    const fallidos = [];
+    for (const data of lista) {
+      try {
+        await createOrder({
+          ...data,
+          fecha: fechaHoy,
+          creadoEn: new Date().toISOString(),
+          listo: !!data.listo,
+          pagado: data.pago !== "fiado",
+        });
+      } catch (e) {
+        const msg = String(e?.message || "");
+        fallidos.push({ nombre: data.nombre, error: msg.includes("AGOTADO") ? "plato agotado" : "no se pudo guardar" });
+      }
+    }
+    await refreshOrders();
+    const ok = lista.length - fallidos.length;
+    if (ok) showToast(`${ok} pedido${ok > 1 ? "s" : ""} del cuaderno guardado${ok > 1 ? "s" : ""}`, "success");
+    return fallidos;
+  };
+
   const handleOrderUpdate = async (id, patch) => {
     const previous = orders;
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
@@ -328,6 +351,7 @@ export function AppProvider({ children }) {
     desbloqueado,
     desbloquear,
     crearPedidoAdmin,
+    crearPedidosVarios,
     mensajeCompartido,
     setMensajeCompartido,
     bloquear,
