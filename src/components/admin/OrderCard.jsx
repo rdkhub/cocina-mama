@@ -34,6 +34,12 @@ export function OrderCard({ order, onUpdate, onDelete, resaltado }) {
         <div>
           <div className="font-medium text-tinta flex items-center gap-1.5">
             {order.nombre}
+            {order.origen === "whatsapp" && (
+              <span className="text-[10px] uppercase font-semibold text-salvia border border-salvia/40 rounded-full px-1.5 py-0.5">WhatsApp</span>
+            )}
+            {order.origen === "manual" && (
+              <span className="text-[10px] uppercase font-semibold text-ocre border border-ocre/40 rounded-full px-1.5 py-0.5">A mano</span>
+            )}
             {order.nombre.toLowerCase().includes("prueba") && (
               <span className="text-[10px] uppercase font-normal text-ocre border border-ocre/40 rounded-full px-1.5 py-0.5">
                 Prueba
@@ -41,7 +47,11 @@ export function OrderCard({ order, onUpdate, onDelete, resaltado }) {
             )}
           </div>
           <div className="text-[13px] text-texto-secundario flex items-center gap-1">
-            <Phone size={12} /> {order.telefono}
+            {order.telefono && (
+              <>
+                <Phone size={12} /> {order.telefono}
+              </>
+            )}
             <Clock size={12} className="ml-1.5" />{" "}
             {new Date(order.creadoEn).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}
           </div>

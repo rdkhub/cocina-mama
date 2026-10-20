@@ -27,6 +27,7 @@ import { HistorialTab } from "./tabs/HistorialTab";
 import { SemanalTab } from "./tabs/SemanalTab";
 import { AjustesTab } from "./tabs/AjustesTab";
 import { CompartirMenu } from "./CompartirMenu";
+import { NuevoPedidoSheet } from "./NuevoPedidoSheet";
 
 // AdminView es el "contenedor" del panel de mamá: guarda qué pestaña está
 // activa y coordina las acciones del catálogo y del menú de hoy. Los datos
@@ -50,9 +51,21 @@ export function AdminView({ onBack }) {
     bloquear,
     handleOrderUpdate,
     handleOrderDelete,
+    crearPedidoAdmin,
+    mensajeCompartido,
+    setMensajeCompartido,
   } = useApp();
 
+
   const [tab, setTab] = useState("pedidos"); // pedidos | menu | platos | deudas | historial | semanal | ajustes
+  // Nuevo pedido de WhatsApp: se abre solo cuando el papá comparte un mensaje.
+  const [nuevoPedido, setNuevoPedido] = useState({ open: false, texto: "" });
+  useEffect(() => {
+    if (!mensajeCompartido) return;
+    setTab("pedidos");
+    setNuevoPedido({ open: true, texto: mensajeCompartido });
+    setMensajeCompartido("");
+  }, [mensajeCompartido, setMensajeCompartido]);
   const [fechaHistorial, setFechaHistorial] = useState(todayKey());
   const [modoHistorial, setModoHistorial] = useState("fecha");
   const [busquedaCliente, setBusquedaCliente] = useState("");
@@ -342,6 +355,7 @@ export function AdminView({ onBack }) {
         <main className="min-w-0 flex-1">
           {tab === "pedidos" && (
             <PedidosTab
+              onNuevoPedido={() => setNuevoPedido({ open: true, texto: "" })}
               todaysOrders={todaysOrders}
               totalVendidoHoy={totalVendidoHoy}
               onOrderUpdate={handleOrderUpdate}
@@ -410,6 +424,16 @@ export function AdminView({ onBack }) {
           {tab === "ajustes" && <AjustesTab ajustes={ajustes} onGuardarAjustes={handleGuardarAjustes} showToast={showToast} />}
         </main>
       </div>
+      <NuevoPedidoSheet
+        open={nuevoPedido.open}
+        textoInicial={nuevoPedido.texto}
+        onClose={() => setNuevoPedido({ open: false, texto: "" })}
+        menuHoy={menuHoy}
+        platos={platos}
+        orders={orders}
+        onGuardar={crearPedidoAdmin}
+        showToast={showToast}
+      />
     </div>
   );
 }
