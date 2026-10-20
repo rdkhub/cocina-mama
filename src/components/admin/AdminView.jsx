@@ -112,6 +112,44 @@ export function AdminView({ onBack }) {
     }
   };
 
+  // Desde la pestaña Menú: crea el plato si no existe (o lo reactiva) y lo
+  // pone en el menú de hoy.
+  const handleCrearYAgregar = async (nombre, categoria) => {
+    const norm = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+    let plato = platos.find((p) => p.categoria === categoria && norm(p.nombre) === norm(nombre));
+    try {
+      if (plato && !plato.activo) {
+        await cambiarActivoPlato(plato.id, true);
+        plato = { ...plato, activo: true };
+        const reactivado = plato;
+        setPlatos((prev) => prev.map((p) => (p.id === reactivado.id ? reactivado : p)));
+      }
+      if (!plato) {
+        plato = await guardarPlato({
+          nombre,
+          categoria,
+          descripcion: "",
+          fotoUrl: "",
+          fotoPath: "",
+          fotosProteina: {},
+          requiereProteina: false,
+          permiteArroz: false,
+          precioExtra: 0,
+          activo: true,
+        });
+        const creado = plato;
+        setPlatos((prev) => [...prev, creado].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      }
+      if (!menuDia.items.some((it) => it.platoId === plato.id)) await handleToggleItem(plato);
+      showToast(`${plato.nombre} quedó en el menú de hoy`, "success");
+      return true;
+    } catch (e) {
+      console.error(e);
+      showToast(e.message || "No se pudo agregar el plato.");
+      return false;
+    }
+  };
+
   const handleToggleProteina = async (plato, item, nombre) => {
     if (!item) return;
     const actuales = item.proteinas || [];
@@ -377,6 +415,7 @@ export function AdminView({ onBack }) {
                 onAbrirDias={handleAbrirDias}
                 onCopiar={handleCopiar}
                 onToggleItem={handleToggleItem}
+                onCrearYAgregar={handleCrearYAgregar}
                 onToggleProteina={handleToggleProteina}
                 onToggleAgotado={handleToggleAgotado}
                 onGuardarPrecios={handleGuardarPrecios}

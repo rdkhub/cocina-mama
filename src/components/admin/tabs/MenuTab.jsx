@@ -2,10 +2,24 @@
 // "Armar menú de hoy": tocar platos del catálogo (agrupados por categoría),
 // marcar proteínas y agotados, fijar precios, copiar el menú de otro día.
 import React, { useState, useMemo } from "react";
-import { Check, Ban, Copy, Loader2, ChevronDown } from "lucide-react";
+import { Check, Ban, Copy, Loader2, ChevronDown, Search, Plus, X } from "lucide-react";
 import { FotoPlato, Field, inputStyle, EmptyState } from "../../ui";
 import { CATEGORIAS } from "../../../lib/catalogo";
 import { soles } from "../../../utils/pedidos";
+
+const normalizar = (t) =>
+  (t || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+const CATEGORIAS_NUEVO = [
+  { id: "segundo", label: "Segundo" },
+  { id: "entrada", label: "Entrada" },
+  { id: "adicional", label: "Extra" },
+];
 
 function FilaPlato({ plato, enMenu, onToggle, item, proteinas, onToggleProteina, onToggleAgotado, onPrecioExtra }) {
   const agotado = item?.agotado;
@@ -96,8 +110,11 @@ export function MenuTab({
   onGuardarPrecios,
   onPrecioExtra,
   guardandoPrecios,
+  onCrearYAgregar,
 }) {
   const [precios, setPrecios] = useState(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [creando, setCreando] = useState("");
   const valoresPrecios = precios || {
     precioRecojo: dia?.precioRecojo ?? "",
     precioDelivery: dia?.precioDelivery ?? "",
@@ -108,7 +125,19 @@ export function MenuTab({
 
   const itemsPorId = useMemo(() => new Map(menuDia.items.map((it) => [it.platoId, it])), [menuDia.items]);
 
-  const porCategoria = (cat) => platos.filter((p) => p.activo && p.categoria === cat);
+  const q = normalizar(busqueda);
+  const coincide = (p) => !q || normalizar(p.nombre).includes(q);
+  const porCategoria = (cat) => platos.filter((p) => p.activo && p.categoria === cat && coincide(p));
+  const existeExacto = platos.some((p) => p.activo && normalizar(p.nombre) === q);
+  const nombreNuevo = busqueda.trim().replace(/\s+/g, " ").replace(/^./, (c) => c.toUpperCase());
+  const hayResultados = platos.some((p) => p.activo && coincide(p));
+
+  const crear = async (categoria) => {
+    setCreando(categoria);
+    const ok = await onCrearYAgregar(nombreNuevo, categoria);
+    setCreando("");
+    if (ok) setBusqueda("");
+  };
 
   return (
     <div className="space-y-6 pb-10">
@@ -169,6 +198,49 @@ export function MenuTab({
             )}
           </div>
         </details>
+      </div>
+
+      <div className="sticky top-0 z-10 -mx-1 px-1 pt-1 pb-2 bg-crema">
+        <div className="relative">
+          <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-texto-terciario" />
+          <input
+            className={`${inputStyle} pl-10 pr-10`}
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar o agregar un plato (ej: arroz con chancho)"
+            aria-label="Buscar o agregar un plato"
+          />
+          {busqueda && (
+            <button
+              onClick={() => setBusqueda("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-texto-terciario"
+              aria-label="Borrar búsqueda"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+        {q.length >= 3 && !existeExacto && (
+          <div className="mt-2 bg-white border-2 border-dashed border-terracota/50 rounded-xl p-3 animate-fade">
+            <div className="text-[13.5px] text-tinta mb-2">
+              {hayResultados ? "¿No es ninguno de estos? " : "No está en la lista. "}Agregar <b>«{nombreNuevo}»</b> al menú de hoy como:
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {CATEGORIAS_NUEVO.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => crear(c.id)}
+                  disabled={!!creando}
+                  className="bg-terracota hover:bg-terracota-oscura disabled:opacity-60 text-white rounded-lg py-2.5 text-[13.5px] font-semibold flex items-center justify-center gap-1"
+                >
+                  {creando === c.id ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11.5px] text-texto-terciario mt-2">Después puedes ponerle foto, proteínas o precio en la pestaña Platos.</p>
+          </div>
+        )}
       </div>
 
       {CATEGORIAS.map((cat) => {
