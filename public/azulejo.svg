@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <!-- Azulejo de cocina (dibujo propio): flor terracota al centro, cuartos de
+       círculo azules en las esquinas que al repetirse forman círculos, y hojas
+       verdes hacia los bordes. Pensado para repetirse como fondo. -->
+  <rect width="120" height="120" fill="#F6EBD6"/>
+  <!-- esquinas: cuartos de círculo (al juntarse 4 azulejos, un círculo) -->
+  <g fill="#2F5F8A">
+    <path d="M0 0h30a30 30 0 0 1-30 30z"/>
+    <path d="M120 0v30a30 30 0 0 1-30-30z"/>
+    <path d="M0 120v-30a30 30 0 0 1 30 30z"/>
+    <path d="M120 120h-30a30 30 0 0 1 30-30z"/>
+  </g>
+  <g fill="none" stroke="#D69B3C" stroke-width="5">
+    <path d="M0 17a17 17 0 0 0 17-17"/>
+    <path d="M103 0a17 17 0 0 0 17 17"/>
+    <path d="M0 103a17 17 0 0 1 17 17"/>
+    <path d="M120 103a17 17 0 0 0-17 17"/>
+  </g>
+  <!-- hojas hacia el centro de cada borde -->
+  <g fill="#5C7A4F">
+    <path d="M60 4c7 9 7 17 0 24c-7-7-7-15 0-24z"/>
+    <path d="M60 116c-7-9-7-17 0-24c7 7 7 15 0 24z"/>
+    <path d="M4 60c9-7 17-7 24 0c-7 7-15 7-24 0z"/>
+    <path d="M116 60c-9 7-17 7-24 0c7-7 15-7 24 0z"/>
+  </g>
+  <!-- flor central -->
+  <g transform="translate(60 60)">
+    <g fill="#D69B3C">
+      <ellipse rx="7" ry="17" transform="rotate(45)"/>
+      <ellipse rx="7" ry="17" transform="rotate(-45)"/>
+    </g>
+    <g fill="#C1452D">
+      <ellipse rx="9" ry="22"/>
+      <ellipse rx="9" ry="22" transform="rotate(90)"/>
+    </g>
+    <circle r="10" fill="#2F5F8A"/>
+    <circle r="4" fill="#F6EBD6"/>
+  </g>
+  <!-- junta entre azulejos -->
+  <rect x="0.75" y="0.75" width="118.5" height="118.5" fill="none" stroke="#E2D2B4" stroke-width="1.5"/>
+</svg>

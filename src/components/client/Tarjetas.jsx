@@ -7,6 +7,7 @@ import { Check, Minus, Plus, Ban } from "lucide-react";
 import { FotoPlato, vibrar } from "../ui";
 import { soles } from "../../utils/pedidos";
 import { fotoDePlato } from "../../lib/catalogo";
+import { mamaLleva } from "../../lib/mamaGuia";
 
 const resorte = { type: "spring", stiffness: 520, damping: 30 };
 
@@ -180,7 +181,11 @@ export function TarjetaSegundo({
               <m.button
                 type="button"
                 whileTap={puedeAgregar ? { scale: 0.97 } : undefined}
-                onClick={onAgregar}
+                data-mama-lleva
+                onClick={(e) => {
+                  if (puedeAgregar) mamaLleva(e.currentTarget, plato.nombre);
+                  onAgregar();
+                }}
                 className={`w-full rounded-2xl py-3.5 text-[15.5px] font-semibold flex items-center justify-center gap-2 transition-colors ${
                   puedeAgregar ? "btn-cta bg-terracota text-white" : "bg-arena text-texto-secundario"
                 }`}
@@ -257,7 +262,11 @@ export function FilaExtra({ plato, precio, agotado, cantidad, onCambiar }) {
           <m.button
             type="button"
             whileTap={{ scale: 0.85 }}
-            onClick={() => cambiar(1)}
+            data-mama-lleva
+            onClick={(e) => {
+              mamaLleva(e.currentTarget, plato.nombre);
+              cambiar(1);
+            }}
             aria-label={`Agregar ${plato.nombre}`}
             style={{ touchAction: "manipulation" }}
             className="w-10 h-10 rounded-full bg-terracota text-white flex items-center justify-center shadow-active"
@@ -273,7 +282,7 @@ export function FilaExtra({ plato, precio, agotado, cantidad, onCambiar }) {
 
 // Encabezado de cada paso: número grande + título + ayuda corta. Cuando el
 // paso está listo, el número se vuelve un check verde.
-export function Paso({ numero, titulo, ayuda, id, children, listo }) {
+export function Paso({ numero, titulo, ayuda, id, children, listo, mama }) {
   return (
     <section id={id} className="scroll-mt-4 mb-9">
       <div className="flex items-center gap-3 mb-1">
@@ -288,7 +297,9 @@ export function Paso({ numero, titulo, ayuda, id, children, listo }) {
             </m.span>
           </AnimatePresence>
         </span>
-        <h2 className="font-display text-[1.4rem] text-tinta leading-tight">{titulo}</h2>
+        <h2 data-mama={mama} className="font-display text-[1.4rem] text-tinta leading-tight">
+          {titulo}
+        </h2>
       </div>
       {ayuda && <p className="text-[14px] text-texto-secundario mb-4 ml-12">{ayuda}</p>}
       {children}

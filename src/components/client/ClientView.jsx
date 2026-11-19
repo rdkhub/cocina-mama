@@ -2,7 +2,8 @@
 // Página del cliente: 1) recojo o delivery, 2) plato de fondo (con su
 // proteína, entrada y arroz), 3) extras, 4) sus datos. Abajo, una barra fija
 // muestra cuántos platos lleva y el total, y envía el pedido.
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { iniciarMamaGuia } from "../../lib/mamaGuia";
 import { m, AnimatePresence } from "motion/react";
 import { AlertCircle, Loader2, ChevronDown, PackageX, ShoppingBag, Store, MapPin, MessageCircle, Send } from "lucide-react";
 import { useApp } from "../../context/AppContext";
@@ -73,6 +74,14 @@ export function ClientView() {
   const dia = menuHoy.dia;
 
   const segundoActual = segundosDisp.find((x) => x.item.id === segundoElegido);
+
+  // Mamá viva: sube desde el letrero, acompaña al bajar y lleva los platos.
+  const raizRef = useRef(null);
+  const hayMenu = !!dia && menuHoy.total > 0;
+  useEffect(() => {
+    if (!raizRef.current || justSubmitted || !hayMenu) return undefined;
+    return iniciarMamaGuia(raizRef.current);
+  }, [justSubmitted, hayMenu]);
 
   const elegirSegundo = (id) => {
     setSegundoElegido((prev) => (prev === id ? null : id));
@@ -324,12 +333,12 @@ export function ClientView() {
   const errorEn = (campo) => error.campo === campo;
 
   return (
-    <div className={`min-h-screen bg-crema ${hayAlgo ? "pb-32" : "pb-12"}`}>
+    <div ref={raizRef} className={`min-h-screen bg-crema ${hayAlgo ? "pb-32" : "pb-12"}`}>
       <MenuHero menuHoy={menuHoy} onAdmin={abrirAdmin} />
 
       <main className="max-w-md mx-auto px-5 pt-8">
         {/* Paso 1: recojo o delivery (define el precio de cada menú) */}
-        <Paso numero={nPaso.modo} titulo="¿Recojo o delivery?" ayuda="El precio del menú depende de esto." id="paso-modo" listo>
+        <Paso numero={nPaso.modo} titulo="¿Recojo o delivery?" ayuda="El precio del menú depende de esto." id="paso-modo" listo mama="texto">
           <div className="grid grid-cols-2 gap-3">
             {[
               { id: "recojo", texto: "Recojo en local", Icono: Store, precio: dia.precioRecojo },
@@ -368,7 +377,7 @@ export function ClientView() {
           id="paso-segundo"
           listo={menus.length > 0}
         >
-          <div className="space-y-3">
+          <div className="space-y-3" data-mama="asoma">
             {ordenar(menuHoy.segundos).map((x) => (
               <TarjetaSegundo
                 key={x.item.id}
@@ -411,7 +420,7 @@ export function ClientView() {
 
         {/* Paso 3: extras */}
         {(extrasDisp.length > 0 || menuHoy.extras.length > 0) && (
-          <Paso numero={nPaso.extras} titulo="¿Algo más?" ayuda="Postres, bebidas y adicionales, cada uno aparte." id="paso-extras" listo={totalExtras > 0}>
+          <Paso numero={nPaso.extras} titulo="¿Algo más?" ayuda="Postres, bebidas y adicionales, cada uno aparte." id="paso-extras" listo={totalExtras > 0} mama="texto">
             <div className="space-y-2.5">
               {ordenar(menuHoy.extras).map((x) => (
                 <FilaExtra
@@ -461,7 +470,7 @@ export function ClientView() {
         </AnimatePresence>
 
         {/* Paso final: entrega, pago y datos */}
-        <Paso numero={nPaso.datos} titulo="Tus datos" ayuda="Los guardamos en este celular para la próxima vez." id="paso-datos" listo={!!(pago && nombre.trim() && telefono.trim())}>
+        <Paso numero={nPaso.datos} titulo="Tus datos" ayuda="Los guardamos en este celular para la próxima vez." id="paso-datos" listo={!!(pago && nombre.trim() && telefono.trim())} mama="texto">
           <div className="space-y-5 bg-white rounded-3xl shadow-card p-4">
             {modo === "delivery" && (
               <div id="campo-direccion" className="scroll-mt-24">
@@ -563,7 +572,7 @@ export function ClientView() {
                   transition={{ duration: 0.35 }}
                   className="relative w-11 h-11 rounded-full bg-dorado/15 flex items-center justify-center shrink-0"
                 >
-                  <ShoppingBag size={20} className="text-dorado" />
+                  <ShoppingBag id="bolsa-pedido" size={20} className="text-dorado" />
                   <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-terracota text-white text-[11.5px] font-bold flex items-center justify-center">
                     {totalCosas}
                   </span>
