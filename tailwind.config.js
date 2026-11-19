@@ -3,6 +3,13 @@ export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
+      // Figtree para todo; los precios usan font-mono = Figtree con números
+      // del mismo ancho (ver index.css), no una letra de máquina de escribir.
+      fontFamily: {
+        sans: ["Figtree", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        mono: ["Figtree", "system-ui", "sans-serif"],
+        display: ["Young Serif", "Georgia", "serif"],
+      },
       // Paleta completa con nombre. Antes cada componente repetía valores
       // hexadecimales sueltos (bg-[#FBF6EC], text-[#6E6253], etc.) — ahora
       // todos apuntan a estos mismos nombres, así que cambiar un color de
@@ -17,7 +24,8 @@ export default {
         "terracota-oscura": "#a93a25",
         salvia: "#5C7A4F",
         "salvia-oscura": "#4d6841",
-        ocre: "#9C7A3C",
+        // Más oscuro que antes (#9C7A3C, 4.0:1) para que el texto ocre pase 4.5:1.
+        ocre: "#86672E",
         dorado: "#E0A95C",
         arena: "#e8ddc8",
         "arena-oscura": "#dccdb4",

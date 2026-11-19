@@ -15,7 +15,7 @@ export const PAY_LABELS = {
 
 export const PAY_COLORS = {
   yape: "#5C7A4F",
-  efectivo: "#9C7A3C",
+  efectivo: "#86672E",
   fiado: "#C1452D",
 };
 

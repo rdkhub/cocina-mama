@@ -17,18 +17,21 @@
     <meta name="apple-mobile-web-app-title" content="Cocina de Mamá" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <!-- Vista previa al compartir el link por WhatsApp -->
+    <!-- Vista previa al compartir el link por WhatsApp: tarjeta grande con Mamá -->
     <meta property="og:title" content="Cocina de Mamá · Menú del día" />
-    <meta property="og:description" content="Mira el menú de hoy y haz tu pedido en un minuto." />
-    <meta property="og:image" content="https://cocina-mama-roan.vercel.app/icons/icon-512.png" />
+    <meta property="og:description" content="Comida casera en La Molina. Mira el menú de hoy y pide en un minuto: recojo o delivery." />
+    <meta property="og:image" content="https://cocina-mama-roan.vercel.app/og-cocina-de-mama.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Mamá con su sombrero de paja y una olla de comida casera: Cocina de Mamá, menú del día" />
+    <meta property="og:url" content="https://cocina-mama-roan.vercel.app/" />
+    <meta property="og:locale" content="es_PE" />
     <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"
-    />
+    <!-- Letras propias (están en /public/fonts, no dependen de Google) -->
+    <link rel="preload" href="/fonts/figtree-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/young-serif-400-latin.woff2" as="font" type="font/woff2" crossorigin />
   </head>
   <body>
     <div id="root"></div>

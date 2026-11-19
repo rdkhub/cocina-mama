@@ -9,5 +9,18 @@ export const WHATSAPP_NUMBER = "51998869843";
 // (el cliente escribe lo que quiera).
 export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}`;
 
+// Número para mostrar: "998 869 843".
+export const WHATSAPP_VISIBLE = WHATSAPP_NUMBER.slice(2).replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
+
+// Dónde queda el local.
+export const DIRECCION = {
+  linea1: "Calle Pongo de Rentema, Mz.\u00a0A, Lt.\u00a018",
+  linea2: "Las Lomas de La Molina Vieja, La\u00a0Molina",
+};
+// Para Google Maps se busca la calle (la manzana y el lote no los conoce).
+const BUSQUEDA_MAPA = "Calle Pongo de Rentema, La Molina, Lima, Perú";
+export const MAPA_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(BUSQUEDA_MAPA)}`;
+export const MAPA_EMBED_URL = `https://www.google.com/maps?q=${encodeURIComponent(BUSQUEDA_MAPA)}&z=16&output=embed`;
+
 // URL pública de la app, para incluirla en el aviso del menú del día.
 export const APP_URL = "https://cocina-mama-roan.vercel.app/";

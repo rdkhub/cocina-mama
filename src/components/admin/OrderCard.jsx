@@ -88,7 +88,7 @@ export function OrderCard({ order, onUpdate, onDelete, resaltado }) {
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
-        <Tag color={order.modo === "delivery" ? "#9C7A3C" : "#5C7A4F"}>
+        <Tag color={order.modo === "delivery" ? "#86672E" : "#5C7A4F"}>
           {order.modo === "delivery" ? `Delivery: ${order.direccion}` : "Recojo en local"}
         </Tag>
         <Tag color={PAY_COLORS[order.pago]}>{PAY_LABELS[order.pago]}</Tag>
