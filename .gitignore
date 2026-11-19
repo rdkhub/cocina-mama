@@ -9,3 +9,6 @@ dist
 
 # Ajustes locales de Claude Code (hooks de Impeccable de esta máquina)
 .claude/settings.local.json
+
+# Capturas temporales del navegador de pruebas (Playwright MCP)
+.playwright-mcp/
