@@ -38,7 +38,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let datos = {};
+  let datos;
   try {
     datos = event.data ? event.data.json() : {};
   } catch {

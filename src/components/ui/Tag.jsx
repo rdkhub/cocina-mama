@@ -1,5 +1,4 @@
 // src/components/ui/Tag.jsx
-import React from "react";
 
 export function Tag({ children, color }) {
   return (

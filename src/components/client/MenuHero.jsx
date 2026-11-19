@@ -1,5 +1,4 @@
 // src/components/client/MenuHero.jsx
-import React from "react";
 import { Lock, MessageCircle } from "lucide-react";
 import { fechaLabel } from "../../data";
 import { WHATSAPP_URL } from "../../utils/contacto";

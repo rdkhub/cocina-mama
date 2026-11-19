@@ -10,9 +10,12 @@ export { EmptyState } from "./EmptyState";
 export { QtyCard } from "./QtyCard";
 export { SelectCard } from "./SelectCard";
 export { ConfirmDialog } from "./ConfirmDialog";
-export { Toast } from "./Toast";
+export { Avisos } from "./Toast";
+export { avisar } from "./avisar";
+export { vibrar } from "./vibrar";
 export { Skeleton } from "./Skeleton";
 export { inputStyle } from "./inputStyle";
 export { FotoPlato } from "./FotoPlato";
-export { Sheet } from "./Sheet";
+// Sheet (vaul) no va aquí: se importa directo de "./Sheet" para que no entre
+// al código que descarga el cliente.
 export { Switch } from "./Switch";

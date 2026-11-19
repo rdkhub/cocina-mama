@@ -1,8 +1,9 @@
 // src/components/admin/tabs/PlatosTab.jsx
 // Catálogo de platos: crear, editar, subir foto, desactivar (nunca se borran).
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { Plus, Pencil, Ban, RotateCcw, Camera, Loader2, X } from "lucide-react";
-import { FotoPlato, Field, inputStyle, Sheet, Switch, EmptyState } from "../../ui";
+import { FotoPlato, Field, inputStyle, Switch, EmptyState } from "../../ui";
+import { Sheet } from "../../ui/Sheet";
 import { CATEGORIAS, fotoEnUso } from "../../../lib/catalogo";
 import { comprimirFoto } from "../../../lib/imagen";
 

@@ -1,10 +1,49 @@
 // src/components/client/OrderConfirmation.jsx
-import React from "react";
-import { CheckCircle2, Wallet } from "lucide-react";
-import { Row } from "../ui";
+// Pantalla de "¡Pedido recibido!": check que se dibuja solo y un poco de
+// confeti con los colores de la casa, para que el cliente sepa sin duda que
+// su pedido llegó.
+import { useEffect } from "react";
+import { m } from "motion/react";
+import { Wallet, RotateCcw } from "lucide-react";
+import { Row, vibrar } from "../ui";
 import { PAY_LABELS, soles } from "../../utils/pedidos";
 
+function CheckDibujado() {
+  return (
+    <m.div
+      initial={{ scale: 0.4, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 16 }}
+      className="w-24 h-24 rounded-full bg-salvia flex items-center justify-center mx-auto mb-6 shadow-[0_14px_34px_-10px_rgba(92,122,79,0.65)]"
+    >
+      <svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden>
+        <m.path
+          d="M13 27.5 L22.5 37 L40 17"
+          stroke="#fff"
+          strokeWidth="5.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ delay: 0.25, duration: 0.45, ease: "easeOut" }}
+        />
+      </svg>
+    </m.div>
+  );
+}
+
 export function OrderConfirmation({ menuHoy, justSubmitted, onReset }) {
+  useEffect(() => {
+    vibrar([20, 60, 30]);
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    // Se carga solo aquí: el confeti no pesa nada en el resto de la página.
+    import("canvas-confetti").then(({ default: confetti }) => {
+      const colores = ["#C1452D", "#E0A95C", "#5C7A4F", "#FBF6EC"];
+      confetti({ particleCount: 90, spread: 75, origin: { y: 0.35 }, colors: colores, scalar: 0.9, disableForReducedMotion: true });
+      setTimeout(() => confetti({ particleCount: 50, spread: 110, origin: { y: 0.3 }, colors: colores, scalar: 0.8, disableForReducedMotion: true }), 280);
+    });
+  }, []);
+
   const incluidasPorPlato = {};
   justSubmitted.fondos.forEach((f) => {
     if (f.entradaIncluida) incluidasPorPlato[f.entradaIncluida] = (incluidasPorPlato[f.entradaIncluida] || 0) + f.cantidad;
@@ -16,26 +55,24 @@ export function OrderConfirmation({ menuHoy, justSubmitted, onReset }) {
     })
     .filter(Boolean);
 
+  const aparece = (i) => ({ initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.35 + i * 0.08 } });
+
   return (
     <div className="min-h-screen bg-crema flex items-center justify-center px-5 py-10">
       <div className="max-w-sm w-full text-center">
-        <div className="w-16 h-16 rounded-full bg-salvia/10 flex items-center justify-center mx-auto mb-5">
-          <CheckCircle2 size={32} color="#5C7A4F" strokeWidth={1.75} />
-        </div>
-        <h2 className="font-display text-2xl text-tinta mb-2">¡Pedido recibido!</h2>
-        <p className="text-etiqueta text-[15px] leading-relaxed mb-7">
+        <CheckDibujado />
+        <m.h2 {...aparece(0)} className="font-display text-[1.9rem] text-tinta mb-2">
+          ¡Pedido recibido!
+        </m.h2>
+        <m.p {...aparece(1)} className="text-etiqueta text-[15.5px] leading-relaxed mb-7">
           Tu pedido ya está en la cocina. Te avisamos por WhatsApp cuando esté listo
           {justSubmitted.modo === "delivery" ? " para salir." : " para recoger."}
-        </p>
-        <div className="text-left bg-white rounded-2xl border border-arena p-4 mb-7 text-sm">
+        </m.p>
+        <m.div {...aparece(2)} className="text-left bg-white rounded-3xl shadow-card border border-[#eee2cb] p-4 mb-6 text-[14.5px]">
           {justSubmitted.fondos.map((f, i) => {
             const detalles = [f.proteina, f.entradaIncluida ? `con ${f.entradaIncluida}` : null, f.arroz === "sin" ? "sin arroz" : null].filter(Boolean);
             return (
-              <Row
-                key={"f" + i}
-                label={f.cantidad > 1 ? `Plato (x${f.cantidad})` : "Plato"}
-                value={detalles.length > 0 ? `${f.nombre} — ${detalles.join(", ")}` : f.nombre}
-              />
+              <Row key={"f" + i} label={f.cantidad > 1 ? `Plato (x${f.cantidad})` : "Plato"} value={detalles.length > 0 ? `${f.nombre} — ${detalles.join(", ")}` : f.nombre} />
             );
           })}
           {entradasExtra.map((e, i) => (
@@ -46,21 +83,27 @@ export function OrderConfirmation({ menuHoy, justSubmitted, onReset }) {
           ))}
           {menuHoy?.dia?.refresco?.trim() && <Row label="Refresco" value={`${menuHoy.dia.refresco.trim()} (incluido)`} />}
           <Row label="Pago" value={PAY_LABELS[justSubmitted.pago]} />
-          <Row label="Total a pagar" value={soles(justSubmitted.total)} />
-        </div>
+          <div className="flex items-center justify-between pt-3 mt-1 border-t border-divisor">
+            <span className="font-medium text-texto-secundario">Total a pagar</span>
+            <span className="font-mono text-[20px] font-semibold text-terracota">{soles(justSubmitted.total)}</span>
+          </div>
+        </m.div>
 
         {justSubmitted.pago === "yape" && (
-          <div className="bg-salvia/10 border border-salvia/30 rounded-2xl p-4 mb-7 text-left flex items-start gap-2.5">
+          <m.div {...aparece(3)} className="bg-salvia/10 border border-salvia/30 rounded-3xl p-4 mb-6 text-left flex items-start gap-2.5">
             <Wallet size={18} color="#5C7A4F" className="shrink-0 mt-0.5" />
-            <p className="text-[#3a4a32] text-[14px] leading-relaxed">
-              No olvides mandar tu captura del Yape por WhatsApp para confirmar tu pago.
-            </p>
-          </div>
+            <p className="text-[#3a4a32] text-[14.5px] leading-relaxed">No olvides mandar tu captura del Yape por WhatsApp para confirmar tu pago.</p>
+          </m.div>
         )}
 
-        <button onClick={onReset} className="text-terracota text-sm font-medium underline-offset-4 hover:underline">
-          Hacer otro pedido
-        </button>
+        <m.button
+          {...aparece(4)}
+          whileTap={{ scale: 0.95 }}
+          onClick={onReset}
+          className="inline-flex items-center gap-2 text-terracota text-[15px] font-semibold bg-white border-2 border-terracota/25 rounded-full px-5 py-2.5"
+        >
+          <RotateCcw size={16} /> Hacer otro pedido
+        </m.button>
       </div>
     </div>
   );

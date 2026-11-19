@@ -1,16 +1,19 @@
 // src/components/client/ClientView.jsx
-import React, { useState, useMemo } from "react";
-import { AlertCircle, Loader2, ChevronDown, PackageX } from "lucide-react";
+// Página del cliente: 1) recojo o delivery, 2) plato de fondo (con su
+// proteína, entrada y arroz), 3) extras, 4) sus datos. Abajo, una barra fija
+// muestra cuántos platos lleva y el total, y envía el pedido.
+import { useState, useMemo } from "react";
+import { m, AnimatePresence } from "motion/react";
+import { AlertCircle, Loader2, ChevronDown, PackageX, ShoppingBag, Store, MapPin, MessageCircle, Send } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { MenuHero } from "./MenuHero";
-import { TarjetaEntrada, TarjetaSegundo, FilaExtra, Paso } from "./Tarjetas";
+import { TarjetaSegundo, FilaExtra, Paso } from "./Tarjetas";
 import { ResumenPedido } from "./ResumenPedido";
 import { OrderConfirmation } from "./OrderConfirmation";
-import { Field, SelectCard, inputStyle } from "../ui";
+import { Field, SelectCard, inputStyle, vibrar, avisar } from "../ui";
 import { PAY_LABELS, soles } from "../../utils/pedidos";
 import { WHATSAPP_URL } from "../../utils/contacto";
 import { fotoDePlato } from "../../lib/catalogo";
-import { Store, MapPin, MessageCircle } from "lucide-react";
 
 const CLAVE_CLIENTE = "cm_cliente";
 
@@ -32,29 +35,35 @@ function guardarDatosCliente(d) {
 let contadorId = 0;
 const nuevoId = () => `m${Date.now()}_${contadorId++}`;
 
+// Disponibles primero; los agotados se muestran al final, en gris.
+const ordenar = (lista) => [...lista.filter((x) => !x.item.agotado), ...lista.filter((x) => x.item.agotado)];
+
+const irA = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+
 export function ClientView() {
   const { menuHoy, handleOrderSubmit, submitting, justSubmitted, setJustSubmitted, abrirAdmin } = useApp();
   const [guardados] = useState(leerDatosCliente);
 
-  // ---------- Selección en construcción (antes de "Agregar al pedido") ----------
-  const [entradaElegida, setEntradaElegida] = useState(null); // item.id o "sin"
+  // ---------- Plato que está eligiendo (antes de "Agregar a mi pedido") ----------
   const [segundoElegido, setSegundoElegido] = useState(null); // item.id
   const [proteinaElegida, setProteinaElegida] = useState("");
+  const [entradaElegida, setEntradaElegida] = useState(null); // item.id o "sin"
   const [arrozElegido, setArrozElegido] = useState("con");
 
   // ---------- Carrito ----------
   const [menus, setMenus] = useState([]); // [{id, entrada:{item,plato}|null, segundo:{item,plato}, proteina, arroz}]
   const [entradasExtra, setEntradasExtra] = useState({}); // itemId -> cantidad
   const [extras, setExtras] = useState({}); // itemId -> cantidad
+  const [salto, setSalto] = useState(0); // para animar la barra al agregar
 
   // ---------- Datos y entrega ----------
   const [nombre, setNombre] = useState(guardados.nombre || "");
   const [telefono, setTelefono] = useState(guardados.telefono || "");
   const [modo, setModo] = useState(guardados.modo || "recojo");
   const [direccion, setDireccion] = useState(guardados.direccion || "");
-  const [pago, setPago] = useState("fiado");
+  const [pago, setPago] = useState(null);
   const [notas, setNotas] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState({ texto: "", campo: "" });
 
   const disponibles = (lista) => lista.filter((x) => !x.item.agotado);
   const entradasDisp = disponibles(menuHoy.entradas);
@@ -68,75 +77,92 @@ export function ClientView() {
     setSegundoElegido((prev) => (prev === id ? null : id));
     setProteinaElegida("");
     setArrozElegido("con");
+    // Si hoy hay una sola entrada, ya viene elegida.
+    setEntradaElegida(entradasDisp.length === 1 ? entradasDisp[0].item.id : null);
   };
 
-  const puedeAgregar =
-    !!segundoActual &&
-    (!segundoActual.plato.requiereProteina || !!proteinaElegida);
+  const faltaProteina = !!segundoActual?.plato.requiereProteina && !proteinaElegida;
+  const faltaEntrada = entradasDisp.length > 0 && !entradaElegida;
+  const puedeAgregar = !!segundoActual && !faltaProteina && !faltaEntrada;
+  const textoFalta = faltaProteina ? "Elige con qué lo quieres" : faltaEntrada ? "Elige tu entrada" : "";
+
+  // El plato elegido, armado como una línea del carrito.
+  const platoPendiente = () => {
+    const entrada = entradaElegida && entradaElegida !== "sin" ? entradasDisp.find((x) => x.item.id === entradaElegida) : null;
+    return {
+      id: nuevoId(),
+      entrada: entrada || null,
+      segundo: segundoActual,
+      proteina: segundoActual.plato.requiereProteina ? proteinaElegida : "",
+      arroz: segundoActual.plato.permiteArroz ? arrozElegido : null,
+    };
+  };
 
   const agregarMenu = () => {
-    if (!puedeAgregar) return;
-    const entrada = entradaElegida && entradaElegida !== "sin" ? entradasDisp.find((x) => x.item.id === entradaElegida) : null;
-    setMenus((prev) => [
-      ...prev,
-      {
-        id: nuevoId(),
-        entrada: entrada || null,
-        segundo: segundoActual,
-        proteina: segundoActual.plato.requiereProteina ? proteinaElegida : "",
-        arroz: segundoActual.plato.permiteArroz ? arrozElegido : null,
-      },
-    ]);
+    if (!puedeAgregar) {
+      vibrar(30);
+      return;
+    }
+    vibrar(15);
+    setMenus((prev) => [...prev, platoPendiente()]);
     setSegundoElegido(null);
     setProteinaElegida("");
-    document.getElementById("resumen-flotante")?.classList.add("animate-pop");
+    setSalto((n) => n + 1);
   };
 
   const repetirUltimo = () => {
     if (menus.length === 0) return;
+    vibrar(15);
     const u = menus[menus.length - 1];
     setMenus((prev) => [...prev, { ...u, id: nuevoId() }]);
+    setSalto((n) => n + 1);
   };
 
-  const cambiarEntradaExtra = (id, d) =>
+  const cambiarEntradaExtra = (id, d) => {
     setEntradasExtra((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + d) }));
-  const cambiarExtra = (id, d) => setExtras((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + d) }));
+    if (d > 0) setSalto((n) => n + 1);
+  };
+  const cambiarExtra = (id, d) => {
+    setExtras((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + d) }));
+    if (d > 0) setSalto((n) => n + 1);
+  };
 
   // ---------- Totales ----------
   const precioMenu = modo === "delivery" ? dia?.precioDelivery ?? 0 : dia?.precioRecojo ?? 0;
   const totalEntradasExtra = Object.values(entradasExtra).reduce((a, b) => a + b, 0);
-  const totalMenus = menus.length;
-  const totalPagar =
-    totalMenus * precioMenu +
+  const totalExtras = Object.values(extras).reduce((a, b) => a + b, 0);
+  const calcularTotal = (listaMenus) =>
+    listaMenus.length * precioMenu +
     totalEntradasExtra * (dia?.precioEntradaExtra ?? 0) +
     extrasDisp.reduce((acc, x) => acc + (extras[x.item.id] || 0) * x.plato.precioExtra, 0);
-
-  const hayAlgo = totalMenus > 0 || totalEntradasExtra > 0 || Object.values(extras).some((q) => q > 0);
+  const totalPagar = calcularTotal(menus);
+  const totalCosas = menus.length + totalEntradasExtra + totalExtras;
+  const hayAlgo = totalCosas > 0;
 
   // ---------- Líneas del resumen ----------
   const lineasResumen = useMemo(() => {
     const porMenu = {};
-    menus.forEach((m) => {
-      const key = `${m.segundo.plato.id}|${m.proteina}|${m.arroz}|${m.entrada?.plato.id || ""}`;
-      if (!porMenu[key]) porMenu[key] = { ...m, cantidad: 0 };
+    menus.forEach((x) => {
+      const key = `${x.segundo.plato.id}|${x.proteina}|${x.arroz}|${x.entrada?.plato.id || ""}`;
+      if (!porMenu[key]) porMenu[key] = { ...x, cantidad: 0 };
       porMenu[key].cantidad++;
     });
-    const lineas = Object.entries(porMenu).map(([key, m]) => {
-      const detalles = [m.proteina, m.entrada ? `+ ${m.entrada.plato.nombre.trim()}` : null, m.arroz === "sin" ? "sin arroz" : null].filter(Boolean);
+    const lineas = Object.entries(porMenu).map(([key, x]) => {
+      const detalles = [x.proteina, x.entrada ? `+ ${x.entrada.plato.nombre.trim()}` : "sin entrada", x.arroz === "sin" ? "sin arroz" : null].filter(Boolean);
       return {
         key: "menu-" + key,
-        plato: m.segundo.plato,
-        foto: fotoDePlato(m.segundo.plato, m.proteina),
-        titulo: m.segundo.plato.nombre.trim(),
+        plato: x.segundo.plato,
+        foto: fotoDePlato(x.segundo.plato, x.proteina),
+        titulo: x.segundo.plato.nombre.trim(),
         detalle: detalles.join(" · "),
         precioUnit: precioMenu,
-        cantidad: m.cantidad,
+        cantidad: x.cantidad,
         onCambiar: (d) => {
-          if (d > 0) setMenus((prev) => [...prev, { ...m, id: nuevoId() }]);
+          if (d > 0) setMenus((prev) => [...prev, { ...x, id: nuevoId() }]);
           else
             setMenus((prev) => {
               const idx = prev.findIndex(
-                (x) => x.segundo.plato.id === m.segundo.plato.id && x.proteina === m.proteina && x.arroz === m.arroz && (x.entrada?.plato.id || "") === (m.entrada?.plato.id || "")
+                (y) => y.segundo.plato.id === x.segundo.plato.id && y.proteina === x.proteina && y.arroz === x.arroz && (y.entrada?.plato.id || "") === (x.entrada?.plato.id || "")
               );
               return idx === -1 ? prev : prev.filter((_, i) => i !== idx);
             });
@@ -169,36 +195,54 @@ export function ClientView() {
         });
     });
     return lineas;
-  }, [menus, entradasExtra, extras, precioMenu, dia, entradasDisp, extrasDisp]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menus, entradasExtra, extras, precioMenu, dia, menuHoy]);
+
+  const fallar = (texto, campo) => {
+    vibrar(40);
+    setError({ texto, campo });
+    avisar(texto);
+    if (campo) irA(campo);
+  };
 
   const handleSubmit = () => {
-    if (!hayAlgo) return setError("Elige al menos un plato, entrada o extra.");
-    if (!nombre.trim()) return setError("Falta tu nombre.");
-    if (!telefono.trim()) return setError("Falta tu número de WhatsApp.");
-    if (modo === "delivery" && !direccion.trim()) return setError("Falta la dirección de entrega.");
-    setError("");
+    // Si dejó un plato elegido sin tocar "Agregar", se agrega solo.
+    let menusFinal = menus;
+    if (segundoActual) {
+      if (!puedeAgregar) return fallar(`${textoFalta} para tu ${segundoActual.plato.nombre.trim()}.`, "paso-segundo");
+      menusFinal = [...menus, platoPendiente()];
+      setMenus(menusFinal);
+      setSegundoElegido(null);
+    }
+    const hay = menusFinal.length + totalEntradasExtra + totalExtras > 0;
+    if (!hay) return fallar("Elige al menos un plato.", "paso-segundo");
+    if (modo === "delivery" && !direccion.trim()) return fallar("Falta la dirección de entrega.", "campo-direccion");
+    if (!pago) return fallar("Elige cómo vas a pagar.", "campo-pago");
+    if (!nombre.trim()) return fallar("Falta tu nombre.", "campo-nombre");
+    if (!telefono.trim()) return fallar("Falta tu número de WhatsApp.", "campo-telefono");
+    setError({ texto: "", campo: "" });
 
     const fondos = [];
     const porCombo = {};
-    menus.forEach((m) => {
-      const key = `${m.segundo.plato.id}|${m.proteina}|${m.arroz}|${m.entrada?.plato.id || ""}`;
-      if (!porCombo[key]) porCombo[key] = { ...m, cantidad: 0 };
+    menusFinal.forEach((x) => {
+      const key = `${x.segundo.plato.id}|${x.proteina}|${x.arroz}|${x.entrada?.plato.id || ""}`;
+      if (!porCombo[key]) porCombo[key] = { ...x, cantidad: 0 };
       porCombo[key].cantidad++;
     });
-    Object.values(porCombo).forEach((m) => {
+    Object.values(porCombo).forEach((x) => {
       fondos.push({
-        platoId: m.segundo.plato.id,
-        nombre: m.segundo.plato.nombre.trim(),
-        cantidad: m.cantidad,
-        ...(m.proteina ? { proteina: m.proteina } : {}),
-        ...(m.arroz ? { arroz: m.arroz } : {}),
-        ...(m.entrada ? { entradaId: m.entrada.plato.id, entradaIncluida: m.entrada.plato.nombre.trim() } : {}),
+        platoId: x.segundo.plato.id,
+        nombre: x.segundo.plato.nombre.trim(),
+        cantidad: x.cantidad,
+        ...(x.proteina ? { proteina: x.proteina } : {}),
+        ...(x.arroz ? { arroz: x.arroz } : {}),
+        ...(x.entrada ? { entradaId: x.entrada.plato.id, entradaIncluida: x.entrada.plato.nombre.trim() } : {}),
       });
     });
 
     const entradasIncluidasConteo = {};
-    menus.forEach((m) => {
-      if (m.entrada) entradasIncluidasConteo[m.entrada.plato.id] = (entradasIncluidasConteo[m.entrada.plato.id] || 0) + 1;
+    menusFinal.forEach((x) => {
+      if (x.entrada) entradasIncluidasConteo[x.entrada.plato.id] = (entradasIncluidasConteo[x.entrada.plato.id] || 0) + 1;
     });
     const entradas = entradasDisp
       .map((x) => {
@@ -230,7 +274,7 @@ export function ClientView() {
       notas: notas.trim(),
       fecha: menuHoy.fecha,
       formato: 2,
-      totalEstimado: totalPagar,
+      totalEstimado: calcularTotal(menusFinal),
     });
   };
 
@@ -245,6 +289,7 @@ export function ClientView() {
           setEntradasExtra({});
           setExtras({});
           setNotas("");
+          setPago(null);
         }}
       />
     );
@@ -255,17 +300,15 @@ export function ClientView() {
       <div className="min-h-screen bg-crema flex flex-col">
         <MenuHero menuHoy={menuHoy} onAdmin={abrirAdmin} />
         <main className="max-w-md mx-auto px-5 -mt-8 relative z-10 flex-1 w-full">
-          <div className="bg-white rounded-2xl shadow-floating border border-[#eee2cb] p-7 text-center">
+          <div className="bg-white rounded-3xl shadow-floating border border-[#eee2cb] p-7 text-center">
             <PackageX size={34} className="mx-auto mb-3 text-arena-hover" />
             <h2 className="font-display text-xl text-tinta mb-1.5">Hoy no hay menú publicado</h2>
-            <p className="text-texto-secundario text-[14.5px] leading-relaxed mb-4">
-              Escríbenos por WhatsApp y te contamos qué hay para almorzar.
-            </p>
+            <p className="text-texto-secundario text-[15px] leading-relaxed mb-4">Escríbenos por WhatsApp y te contamos qué hay para almorzar.</p>
             <a
               href={WHATSAPP_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-cta inline-flex items-center gap-2 bg-terracota hover:bg-terracota-oscura text-white font-medium rounded-xl px-5 py-3 text-[14.5px]"
+              className="btn-cta inline-flex items-center gap-2 bg-terracota hover:bg-terracota-oscura text-white font-medium rounded-2xl px-5 py-3 text-[15px]"
             >
               <MessageCircle size={17} /> Escribir por WhatsApp
             </a>
@@ -275,79 +318,56 @@ export function ClientView() {
     );
   }
 
+  const nPaso = { modo: 1, plato: 2, extras: 3, datos: extrasDisp.length || entradasDisp.length ? 4 : 3 };
+  const errorEn = (campo) => error.campo === campo;
+
   return (
-    <div className={`min-h-screen bg-crema ${hayAlgo ? "pb-28" : "pb-10"}`}>
+    <div className={`min-h-screen bg-crema ${hayAlgo ? "pb-32" : "pb-12"}`}>
       <MenuHero menuHoy={menuHoy} onAdmin={abrirAdmin} />
 
-      <main className="max-w-md mx-auto px-5 pt-7">
+      <main className="max-w-md mx-auto px-5 pt-8">
         {/* Paso 1: recojo o delivery (define el precio de cada menú) */}
-        <Paso numero={1} titulo="¿Recojo o delivery?" ayuda="El precio del menú depende de esto." id="paso-modo">
-          <div className="grid grid-cols-2 gap-2.5">
+        <Paso numero={nPaso.modo} titulo="¿Recojo o delivery?" ayuda="El precio del menú depende de esto." id="paso-modo" listo>
+          <div className="grid grid-cols-2 gap-3">
             {[
               { id: "recojo", texto: "Recojo en local", Icono: Store, precio: dia.precioRecojo },
               { id: "delivery", texto: "Delivery", Icono: MapPin, precio: dia.precioDelivery },
             ].map(({ id, texto, Icono, precio }) => {
               const activo = modo === id;
               return (
-                <button
+                <m.button
                   key={id}
                   type="button"
-                  onClick={() => setModo(id)}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    vibrar();
+                    setModo(id);
+                  }}
                   aria-pressed={activo}
-                  className={`rounded-2xl border-2 bg-white px-3 py-3.5 flex flex-col items-center gap-1 transition active:scale-[0.98] ${
-                    activo ? "border-terracota shadow-active" : "border-transparent shadow-card"
+                  className={`rounded-[22px] border-2 px-3 py-4 flex flex-col items-center gap-1 transition-[background-color,border-color,box-shadow] duration-200 ${
+                    activo ? "border-terracota bg-terracota-suave shadow-elegida" : "border-transparent bg-white shadow-card"
                   }`}
                 >
-                  <Icono size={20} className={activo ? "text-terracota" : "text-texto-terciario"} />
-                  <span className={`text-[14px] ${activo ? "font-semibold text-tinta" : "font-medium text-texto-secundario"}`}>{texto}</span>
-                  <span className={`font-mono text-[13px] ${activo ? "text-terracota font-semibold" : "text-texto-terciario"}`}>
-                    {soles(precio)} el menú
-                  </span>
-                </button>
+                  <Icono size={22} className={activo ? "text-terracota" : "text-texto-terciario"} />
+                  <span className={`text-[15px] ${activo ? "font-semibold text-tinta" : "font-medium text-texto-secundario"}`}>{texto}</span>
+                  <span className={`font-mono text-[13.5px] ${activo ? "text-terracota font-semibold" : "text-texto-terciario"}`}>{soles(precio)} el menú</span>
+                </m.button>
               );
             })}
           </div>
-          {modo === "delivery" && (
-            <p className="text-[12.5px] text-texto-terciario mt-2 ml-1 animate-fade">Te pedimos la dirección al final, junto con tus datos.</p>
-          )}
+          {modo === "delivery" && <p className="text-[13px] text-texto-terciario mt-2.5 ml-1 animate-fade">Te pedimos la dirección al final, junto con tus datos.</p>}
         </Paso>
 
-        {/* Paso 2: entrada */}
-        {entradasDisp.length > 0 && (
-          <Paso numero={2} titulo="Elige tu entrada" ayuda="Va incluida gratis con tu plato de fondo." id="paso-entrada">
-            <div className="grid grid-cols-2 gap-2.5">
-              {entradasDisp.map((x) => (
-                <TarjetaEntrada
-                  key={x.item.id}
-                  plato={x.plato}
-                  agotado={x.item.agotado}
-                  activo={entradaElegida === x.item.id}
-                  onClick={() => setEntradaElegida(entradaElegida === x.item.id ? null : x.item.id)}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={() => setEntradaElegida(entradaElegida === "sin" ? null : "sin")}
-                aria-pressed={entradaElegida === "sin"}
-                className={`rounded-2xl border-2 border-dashed flex items-center justify-center text-[13.5px] font-medium px-3 py-6 transition ${
-                  entradaElegida === "sin" ? "border-terracota text-terracota bg-white" : "border-arena-oscura text-texto-terciario"
-                }`}
-              >
-                Sin entrada
-              </button>
-            </div>
-          </Paso>
-        )}
-
-        {/* Paso 3: segundo */}
+        {/* Paso 2: plato de fondo, con su proteína, entrada y arroz */}
         <Paso
-          numero={entradasDisp.length > 0 ? 3 : 2}
-          titulo="Elige tu plato de fondo"
-          ayuda="Toca un plato para ver sus opciones."
+          numero={nPaso.plato}
+          titulo="Elige tu plato"
+          ayuda={entradasDisp.length ? "Tócalo para elegir la entrada y las opciones. Cada menú incluye entrada y refresco." : "Tócalo para ver sus opciones."}
           id="paso-segundo"
+          listo={menus.length > 0}
         >
-          <div className="space-y-2.5">
-            {segundosDisp.map((x) => (
+          <div className="space-y-3">
+            {ordenar(menuHoy.segundos).map((x) => (
               <TarjetaSegundo
                 key={x.item.id}
                 plato={x.plato}
@@ -359,40 +379,39 @@ export function ClientView() {
                 onProteina={setProteinaElegida}
                 arroz={arrozElegido}
                 onArroz={setArrozElegido}
+                entradas={entradasDisp}
+                entrada={entradaElegida}
+                onEntrada={setEntradaElegida}
+                precio={precioMenu}
+                puedeAgregar={puedeAgregar}
+                falta={textoFalta}
+                onAgregar={agregarMenu}
               />
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={agregarMenu}
-            disabled={!puedeAgregar}
-            className="btn-cta w-full mt-3.5 bg-terracota disabled:bg-arena-hover disabled:shadow-none hover:bg-terracota-oscura disabled:text-texto-terciario text-white font-semibold rounded-xl py-3 text-[14.5px] transition"
-          >
-            {segundoActual
-              ? `Agregar al pedido${precioMenu ? ` · ${soles(precioMenu)}` : ""}${modo === "delivery" ? " (delivery)" : ""}`
-              : "Elige un plato arriba"}
-          </button>
+          <AnimatePresence>
+            {menus.length > 0 && (
+              <m.button
+                type="button"
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={repetirUltimo}
+                className="mt-3.5 text-[14.5px] text-terracota font-semibold inline-flex items-center gap-1.5 bg-white border-2 border-terracota/30 rounded-full px-4 py-2"
+              >
+                + Otro igual al último
+              </m.button>
+            )}
+          </AnimatePresence>
         </Paso>
 
-        {/* Lo que ya agregó */}
-        {menus.length > 0 && (
-          <div className="mb-8 -mt-3">
-            <button
-              type="button"
-              onClick={repetirUltimo}
-              className="text-[13px] text-terracota font-medium mb-2 inline-flex items-center gap-1"
-            >
-              + Agregar otro igual al último
-            </button>
-          </div>
-        )}
-
-        {/* Paso 4: extras */}
-        {extrasDisp.length > 0 && (
-          <Paso numero={(entradasDisp.length > 0 ? 1 : 0) + 3} titulo="¿Algo más?" ayuda="Postres, bebidas y adicionales, cada uno aparte." id="paso-extras">
-            <div className="space-y-2">
-              {extrasDisp.map((x) => (
+        {/* Paso 3: extras */}
+        {(extrasDisp.length > 0 || menuHoy.extras.length > 0) && (
+          <Paso numero={nPaso.extras} titulo="¿Algo más?" ayuda="Postres, bebidas y adicionales, cada uno aparte." id="paso-extras" listo={totalExtras > 0}>
+            <div className="space-y-2.5">
+              {ordenar(menuHoy.extras).map((x) => (
                 <FilaExtra
                   key={x.item.id}
                   plato={x.plato}
@@ -407,12 +426,12 @@ export function ClientView() {
         )}
 
         {entradasDisp.length > 0 && (
-          <details className="mb-8 group">
-            <summary className="list-none flex items-center gap-1.5 text-[13.5px] text-texto-secundario font-medium cursor-pointer select-none">
-              <ChevronDown size={15} className="transition group-open:rotate-180" />
+          <details className="mb-9 group -mt-4">
+            <summary className="list-none flex items-center gap-1.5 text-[14px] text-texto-secundario font-medium cursor-pointer select-none bg-white rounded-2xl px-4 py-3 shadow-card">
+              <ChevronDown size={16} className="transition group-open:rotate-180" />
               ¿Quieres una entrada extra? (+{soles(dia.precioEntradaExtra)} cada una)
             </summary>
-            <div className="space-y-2 mt-2.5">
+            <div className="space-y-2.5 mt-2.5">
               {entradasDisp.map((x) => (
                 <FilaExtra
                   key={x.item.id}
@@ -428,78 +447,141 @@ export function ClientView() {
         )}
 
         {/* Resumen */}
-        {hayAlgo && (
-          <div id="resumen-flotante" className="mb-8">
-            <h2 className="font-display text-[1.2rem] text-tinta mb-3">Tu pedido</h2>
-            <ResumenPedido lineas={lineasResumen} total={totalPagar} />
-          </div>
-        )}
+        <AnimatePresence>
+          {hayAlgo && (
+            <m.div id="resumen-pedido" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }} className="mb-9 scroll-mt-4">
+              <h2 className="font-display text-[1.3rem] text-tinta mb-3 flex items-center gap-2">
+                <ShoppingBag size={20} className="text-terracota" /> Tu pedido
+              </h2>
+              <ResumenPedido lineas={lineasResumen} total={totalPagar} />
+            </m.div>
+          )}
+        </AnimatePresence>
 
-        {/* Entrega, pago y datos */}
-        <div className="space-y-5">
-          {modo === "delivery" && (
-            <Field label="Dirección de entrega">
-              <input className={inputStyle} value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Jr. Las Flores 123, dpto 4" />
+        {/* Paso final: entrega, pago y datos */}
+        <Paso numero={nPaso.datos} titulo="Tus datos" ayuda="Los guardamos en este celular para la próxima vez." id="paso-datos" listo={!!(pago && nombre.trim() && telefono.trim())}>
+          <div className="space-y-5 bg-white rounded-3xl shadow-card p-4">
+            {modo === "delivery" && (
+              <div id="campo-direccion" className="scroll-mt-24">
+                <Field label="Dirección de entrega">
+                  <input
+                    className={`${inputStyle} ${errorEn("campo-direccion") ? "border-terracota ring-2 ring-terracota/20" : ""}`}
+                    value={direccion}
+                    onChange={(e) => setDireccion(e.target.value)}
+                    placeholder="Jr. Las Flores 123, dpto 4"
+                    autoComplete="street-address"
+                  />
+                </Field>
+              </div>
+            )}
+
+            <div id="campo-pago" className={`scroll-mt-24 rounded-2xl transition ${errorEn("campo-pago") ? "ring-2 ring-terracota/40 ring-offset-4" : ""}`}>
+              <Field label="¿Cómo vas a pagar?">
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(PAY_LABELS).map(([key, label]) => (
+                    <SelectCard
+                      key={key}
+                      active={pago === key}
+                      onClick={() => {
+                        vibrar();
+                        setPago(key);
+                      }}
+                      text={label}
+                      compact
+                    />
+                  ))}
+                </div>
+              </Field>
+            </div>
+
+            <div id="campo-nombre" className="scroll-mt-24">
+              <Field label="Tu nombre">
+                <input
+                  className={`${inputStyle} ${errorEn("campo-nombre") ? "border-terracota ring-2 ring-terracota/20" : ""}`}
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Nombre y apellido"
+                  autoComplete="name"
+                />
+              </Field>
+            </div>
+
+            <div id="campo-telefono" className="scroll-mt-24">
+              <Field label="Tu WhatsApp">
+                <input
+                  className={`${inputStyle} ${errorEn("campo-telefono") ? "border-terracota ring-2 ring-terracota/20" : ""}`}
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  placeholder="999 999 999"
+                  inputMode="tel"
+                  autoComplete="tel"
+                />
+              </Field>
+            </div>
+
+            <Field label="Notas (opcional)">
+              <input className={inputStyle} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Sin cebolla, poca sal, etc." />
             </Field>
-          )}
 
-          <Field label="¿Cómo vas a pagar?">
-            <div className="grid grid-cols-3 gap-2">
-              {Object.entries(PAY_LABELS).map(([key, label]) => (
-                <SelectCard key={key} active={pago === key} onClick={() => setPago(key)} text={label} compact />
-              ))}
-            </div>
-          </Field>
-
-          <Field label="Tu nombre">
-            <input className={inputStyle} value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre y apellido" />
-          </Field>
-
-          <Field label="Tu WhatsApp">
-            <input className={inputStyle} value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="999 999 999" inputMode="tel" />
-          </Field>
-
-          <Field label="Notas (opcional)">
-            <input className={inputStyle} value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Sin cebolla, poca sal, etc." />
-          </Field>
-
-          {error && (
-            <div className="flex items-center gap-2 text-terracota text-sm bg-terracota/8 rounded-lg px-3 py-2.5">
-              <AlertCircle size={16} />
-              {error}
-            </div>
-          )}
-
-          {!hayAlgo && (
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="btn-cta w-full bg-terracota hover:bg-terracota-oscura disabled:opacity-60 text-white font-medium rounded-xl py-3.5 text-[15px]"
-            >
-              Enviar mi pedido
-            </button>
-          )}
-        </div>
+            <AnimatePresence>
+              {error.texto && (
+                <m.div
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: [0, -6, 6, -3, 0] }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center gap-2 text-terracota text-[14px] font-medium bg-terracota/10 rounded-xl px-3 py-2.5"
+                >
+                  <AlertCircle size={16} className="shrink-0" />
+                  {error.texto}
+                </m.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </Paso>
       </main>
 
-      {hayAlgo && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-tinta-oscura border-t border-[#463f33] pb-[env(safe-area-inset-bottom)]">
-          <div className="max-w-md mx-auto px-5 py-3 flex items-center gap-3">
-            <div className="flex-1">
-              <div className="font-mono text-[11px] text-[#cfc3ad] uppercase tracking-wide">Total</div>
-              <div className="font-mono text-dorado text-lg font-semibold">{soles(totalPagar)}</div>
+      {/* Barra fija: cuántos platos lleva, total y enviar */}
+      <AnimatePresence>
+        {hayAlgo && (
+          <m.div
+            initial={{ y: 120 }}
+            animate={{ y: 0 }}
+            exit={{ y: 120 }}
+            transition={{ type: "spring", stiffness: 380, damping: 34 }}
+            className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          >
+            <div className="max-w-md mx-auto bg-tinta-oscura/95 backdrop-blur rounded-[26px] shadow-barra border border-white/10 p-2 pl-3 flex items-center gap-3">
+              <button type="button" onClick={() => irA("resumen-pedido")} className="flex items-center gap-3 flex-1 min-w-0 text-left" aria-label="Ver mi pedido">
+                <m.span
+                  key={salto}
+                  initial={{ scale: 1 }}
+                  animate={{ scale: [1, 1.35, 1] }}
+                  transition={{ duration: 0.35 }}
+                  className="relative w-11 h-11 rounded-full bg-dorado/15 flex items-center justify-center shrink-0"
+                >
+                  <ShoppingBag size={20} className="text-dorado" />
+                  <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-terracota text-white text-[11.5px] font-bold flex items-center justify-center">
+                    {totalCosas}
+                  </span>
+                </m.span>
+                <span className="min-w-0">
+                  <span className="block text-[11.5px] text-[#cfc3ad] uppercase tracking-wide">Ver mi pedido</span>
+                  <span className="block font-mono text-dorado text-[18px] font-semibold leading-tight">{soles(totalPagar)}</span>
+                </span>
+              </button>
+              <m.button
+                whileTap={{ scale: 0.95 }}
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="btn-cta bg-terracota hover:bg-terracota-oscura disabled:opacity-60 text-white font-semibold rounded-[20px] px-5 py-3.5 text-[15.5px] flex items-center justify-center gap-2 shrink-0"
+              >
+                {submitting ? <Loader2 size={18} className="animate-spin" /> : <Send size={17} />}
+                {submitting ? "Enviando…" : "Enviar pedido"}
+              </m.button>
             </div>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="btn-cta bg-terracota hover:bg-terracota-oscura disabled:opacity-60 text-white font-medium rounded-xl px-6 py-3 text-[15px] flex items-center justify-center gap-2 shrink-0"
-            >
-              {submitting ? <Loader2 size={18} className="animate-spin" /> : null}
-              {submitting ? "Enviando…" : "Enviar mi pedido"}
-            </button>
-          </div>
-        </div>
-      )}
+          </m.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 // src/components/admin/PinScreen.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { Lock, ArrowLeft, Loader2 } from "lucide-react";
 import { PIN_MINIMO, PIN_MAXIMO } from "../../lib/auth";
 

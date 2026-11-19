@@ -1,5 +1,5 @@
 // src/components/admin/OrderCard.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { Phone, Clock, Trash2, CheckCircle2, Circle, Wallet } from "lucide-react";
 import { Tag, ConfirmDialog } from "../ui";
 import { PAY_LABELS, PAY_COLORS, soles } from "../../utils/pedidos";

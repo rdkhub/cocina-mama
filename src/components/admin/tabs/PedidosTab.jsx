@@ -1,5 +1,5 @@
 // src/components/admin/tabs/PedidosTab.jsx
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { MessageCirclePlus } from "lucide-react";
 import { EmptyState } from "../../ui";
 import { OrderCard } from "../OrderCard";

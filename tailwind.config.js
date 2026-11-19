@@ -26,7 +26,9 @@ export default {
         divisor: "#f0e8d6",
         etiqueta: "#6b5f52",
         "texto-secundario": "#6E6253",
-        "texto-terciario": "#998C76",
+        // Más oscuro que antes (#998C76) para que se lea bien al sol.
+        "texto-terciario": "#7D6F58",
+        "terracota-suave": "#FFF6F0",
         "texto-inactivo": "#5c5246",
         "numero-inactivo": "#B8A684",
         "input-bg": "#FFFDF8",
@@ -35,6 +37,9 @@ export default {
         card: "0 2px 10px rgba(43,38,34,0.05)",
         floating: "0 8px 24px rgba(43,38,34,0.08)",
         active: "0 2px 8px rgba(193,69,45,0.12)",
+        // Tarjeta elegida: "flota" un poco sobre las demás.
+        elegida: "0 10px 26px -8px rgba(193,69,45,0.35), 0 2px 6px rgba(193,69,45,0.10)",
+        barra: "0 -10px 30px -12px rgba(33,27,22,0.45)",
         // Sombra "mecánica" para los botones principales: un borde grueso
         // abajo que simula el grosor de un botón físico. La variante
         // "-active" (más plana, sin borde) es la que se ve al presionar,
