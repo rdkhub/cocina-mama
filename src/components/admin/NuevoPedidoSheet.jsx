@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Loader2, ClipboardPaste, Sparkles, PenLine, Plus, Minus, Trash2, AlertTriangle, MessageCircle, Store, MapPin } from "lucide-react";
 import { Sheet, Field, inputStyle, SelectCard } from "../ui";
 import { leerPedido, contextoDelMenu } from "../../lib/leerPedido";
+import { armarLineas } from "../../lib/cuaderno";
 import { PAY_LABELS, soles } from "../../utils/pedidos";
 
 let contador = 0;
@@ -144,7 +145,6 @@ export function NuevoPedidoSheet({ open, onClose, textoInicial = "", menuHoy, pl
   const quitarFila = (lista, key) => setForm((f) => ({ ...f, [lista]: f[lista].filter((x) => x.key !== key) }));
 
   const segPorId = useMemo(() => new Map(ctx.segundos.map((s) => [s.id, s])), [ctx]);
-  const entPorId = useMemo(() => new Map(ctx.entradas.map((s) => [s.id, s])), [ctx]);
   const extPorId = useMemo(() => new Map(ctx.extras.map((s) => [s.id, s])), [ctx]);
 
   const nMenus = form.menus.reduce((a, m) => a + m.cantidad, 0);
@@ -169,28 +169,7 @@ export function NuevoPedidoSheet({ open, onClose, textoInicial = "", menuHoy, pl
     if (!form.pago) return setError("Elige cómo paga.");
 
     // Mismo formato que los pedidos de la app (ver ClientView).
-    const porCombo = new Map();
-    form.menus.forEach((m) => {
-      const clave = `${m.segundoId}|${m.proteina}|${m.arroz}|${m.entradaId || ""}`;
-      const prev = porCombo.get(clave);
-      if (prev) prev.cantidad += m.cantidad;
-      else porCombo.set(clave, { ...m });
-    });
-    const fondos = Array.from(porCombo.values()).map((m) => ({
-      platoId: m.segundoId,
-      nombre: segPorId.get(m.segundoId).nombre,
-      cantidad: m.cantidad,
-      ...(m.proteina ? { proteina: m.proteina } : {}),
-      ...(m.arroz ? { arroz: m.arroz } : {}),
-      ...(m.entradaId ? { entradaId: m.entradaId, entradaIncluida: entPorId.get(m.entradaId).nombre } : {}),
-    }));
-    const conteoEnt = new Map();
-    form.menus.forEach((m) => m.entradaId && conteoEnt.set(m.entradaId, (conteoEnt.get(m.entradaId) || 0) + m.cantidad));
-    form.entradasExtra.forEach((e) => conteoEnt.set(e.id, (conteoEnt.get(e.id) || 0) + e.cantidad));
-    const entradas = Array.from(conteoEnt, ([id, cantidad]) => ({ platoId: id, nombre: entPorId.get(id).nombre, cantidad }));
-    const conteoExt = new Map();
-    form.adicionales.forEach((a) => conteoExt.set(a.id, (conteoExt.get(a.id) || 0) + a.cantidad));
-    const adicionales = Array.from(conteoExt, ([id, cantidad]) => ({ platoId: id, nombre: extPorId.get(id).nombre, cantidad, precio: extPorId.get(id).precio }));
+    const { fondos, entradas, adicionales } = armarLineas(form, ctx);
 
     setGuardando(true);
     try {

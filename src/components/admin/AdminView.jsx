@@ -20,6 +20,7 @@ import {
   guardarAjustes,
 } from "../../lib/catalogo";
 import { PedidosTab } from "./tabs/PedidosTab";
+import { CuadernoTab } from "./tabs/CuadernoTab";
 import { MenuTab } from "./tabs/MenuTab";
 import { PlatosTab } from "./tabs/PlatosTab";
 import { DeudasTab } from "./tabs/DeudasTab";
@@ -52,12 +53,13 @@ export function AdminView({ onBack }) {
     handleOrderUpdate,
     handleOrderDelete,
     crearPedidoAdmin,
+    editarPedidoAdmin,
     mensajeCompartido,
     setMensajeCompartido,
   } = useApp();
 
 
-  const [tab, setTab] = useState("pedidos"); // pedidos | menu | platos | deudas | historial | semanal | ajustes
+  const [tab, setTab] = useState("cuaderno"); // cuaderno | pedidos | menu | platos | deudas | historial | semanal | ajustes
   // Nuevo pedido de WhatsApp: se abre solo cuando el papá comparte un mensaje.
   const [nuevoPedido, setNuevoPedido] = useState({ open: false, texto: "" });
   useEffect(() => {
@@ -348,6 +350,7 @@ export function AdminView({ onBack }) {
   })();
 
   const TABS = [
+    { id: "cuaderno", label: "Cuaderno" },
     { id: "pedidos", label: `Hoy (${todaysOrders.length})` },
     { id: "menu", label: "Menú" },
     { id: "platos", label: "Platos" },
@@ -391,6 +394,19 @@ export function AdminView({ onBack }) {
         </nav>
 
         <main className="min-w-0 flex-1">
+          {tab === "cuaderno" && (
+            <CuadernoTab
+              todaysOrders={todaysOrders}
+              orders={orders}
+              menuHoy={menuHoy}
+              platos={platos}
+              onCrear={crearPedidoAdmin}
+              onEditar={editarPedidoAdmin}
+              onOrderUpdate={handleOrderUpdate}
+              onOrderDelete={handleOrderDelete}
+            />
+          )}
+
           {tab === "pedidos" && (
             <PedidosTab
               onNuevoPedido={() => setNuevoPedido({ open: true, texto: "" })}

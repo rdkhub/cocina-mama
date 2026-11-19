@@ -67,4 +67,19 @@ export function totalCarrito({ menus, entradasExtra, extras }, dia, modo) {
   return nMenus * precioMenu + nEntradas * dia.precioEntradaExtra + totalExtras;
 }
 
+// Total de un pedido ya armado (fondos / entradas / adicionales, como se
+// guarda en la tabla) con los precios del menú de ese día. Es la misma cuenta
+// que hace la base de datos (validar_pedido), que es la que manda: cada menú
+// al precio de recojo o delivery, las entradas que no vienen incluidas con un
+// menú al precio de entrada extra y cada adicional a su propio precio.
+export function calcularTotalDia({ fondos = [], entradas = [], adicionales = [] }, dia, modo = "recojo") {
+  if (!dia) return 0;
+  const nMenus = sumarCantidades(fondos);
+  const incluidas = fondos.reduce((a, f) => a + (f.entradaIncluida ? f.cantidad || 0 : 0), 0);
+  const entradasSolas = Math.max(0, sumarCantidades(entradas) - incluidas);
+  const precioMenu = modo === "delivery" ? dia.precioDelivery : dia.precioRecojo;
+  const totalAdicionales = adicionales.reduce((a, x) => a + (x.cantidad || 0) * (x.precio || 0), 0);
+  return nMenus * precioMenu + entradasSolas * dia.precioEntradaExtra + totalAdicionales;
+}
+
 export const soles = (n) => `S/ ${Number(n || 0).toFixed(2)}`;
