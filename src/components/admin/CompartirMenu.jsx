@@ -2,7 +2,7 @@
 // "Compartir menú de hoy": abre WhatsApp con el texto ya escrito (wa.me,
 // sin API ni librerías no oficiales) y permite descargar una imagen del
 // menú para subir a un estado o grupo.
-import React, { useState } from "react";
+import { useState } from "react";
 import { MessageCircle, Copy, Check, ImageDown, Loader2, Share2 } from "lucide-react";
 import { textoMenuWhatsApp, linkWhatsApp } from "../../lib/compartir";
 import { generarImagenMenu, nombreArchivoMenu } from "../../lib/imagenMenu";

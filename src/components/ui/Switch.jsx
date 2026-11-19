@@ -1,5 +1,4 @@
 // src/components/ui/Switch.jsx
-import React from "react";
 
 // Interruptor grande, fácil de tocar con el dedo.
 export function Switch({ checked, onChange, label, color = "#C1452D", disabled }) {

@@ -1,5 +1,4 @@
 // src/components/ui/Row.jsx
-import React from "react";
 
 export function Row({ label, value }) {
   return (

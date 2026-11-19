@@ -1,5 +1,5 @@
 // src/components/ui/FotoPlato.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { Salad, Soup, CakeSlice, CupSoda, CirclePlus } from "lucide-react";
 import { COLORES_CATEGORIA } from "../../lib/imagenMenu";
 

@@ -1,5 +1,4 @@
 // src/components/admin/tabs/HistorialTab.jsx
-import React from "react";
 import { Phone } from "lucide-react";
 import { Field, SelectCard, EmptyState, inputStyle } from "../../ui";
 import { OrderCard } from "../OrderCard";

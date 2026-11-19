@@ -1,5 +1,4 @@
 // src/components/ui/EmptyState.jsx
-import React from "react";
 
 export function EmptyState({ text }) {
   return (

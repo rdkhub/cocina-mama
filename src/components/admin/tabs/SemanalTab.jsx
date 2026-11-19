@@ -1,5 +1,4 @@
 // src/components/admin/tabs/SemanalTab.jsx
-import React from "react";
 
 export function SemanalTab({ resumenSemanal, todayKey }) {
   return (

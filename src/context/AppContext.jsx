@@ -1,9 +1,10 @@
 // src/context/AppContext.jsx
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { todayKey, loadOrders, createOrder, updateOrder, updateOrderContenido, deleteOrder } from "../data";
 import { cargarPlatos, cargarMenuDia, cargarProteinas, cargarAjustes, CATEGORIAS_EXTRA } from "../lib/catalogo";
 import { entrarConPin, salir, sesionAdminActiva } from "../lib/auth";
+import { avisar } from "../components/ui/avisar";
 
 const AppContext = createContext(null);
 
@@ -53,9 +54,7 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [justSubmitted, setJustSubmitted] = useState(null);
-  const [toast, setToast] = useState(null);
   const [announcement, setAnnouncement] = useState("");
-  const toastTimer = useRef(null);
 
   // Se limpia la URL para que al recargar no vuelva a abrir el mismo pedido.
   useEffect(() => {
@@ -63,9 +62,7 @@ export function AppProvider({ children }) {
   }, [destinoInicial]);
 
   const showToast = useCallback((message, variant = "error") => {
-    clearTimeout(toastTimer.current);
-    setToast({ message, variant });
-    toastTimer.current = setTimeout(() => setToast(null), 3800);
+    avisar(message, variant);
   }, []);
 
   const marcarDesbloqueo = useCallback((ok) => {
@@ -185,6 +182,8 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     let vivo = true;
+    // Carga inicial desde Supabase: los setState ocurren al llegar los datos.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     Promise.all([refreshOrders(), refreshPlatos(), refreshMenuDia(fechaHoy), refreshProteinas(), refreshAjustes()]).finally(
       () => vivo && setLoading(false)
     );
@@ -360,7 +359,6 @@ export function AppProvider({ children }) {
     submitting,
     justSubmitted,
     setJustSubmitted,
-    toast,
     showToast,
     announcement,
     handleOrderSubmit,
@@ -371,6 +369,8 @@ export function AppProvider({ children }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
+// El hook vive junto al provider a propósito (todos lo importan de aquí).
+// eslint-disable-next-line react-refresh/only-export-components
 export function useApp() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error("useApp debe usarse dentro de un <AppProvider>");

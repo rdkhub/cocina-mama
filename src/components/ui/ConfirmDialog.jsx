@@ -1,5 +1,4 @@
 // src/components/ui/ConfirmDialog.jsx
-import React from "react";
 
 // Modal de confirmación reutilizable para acciones que no se pueden deshacer
 // (ej: borrar un pedido). "danger" cambia el color del botón de confirmar

@@ -2,9 +2,10 @@
 // Registrar un pedido que llegó por WhatsApp (o por teléfono, o en persona).
 // Paso 1: el papá comparte o pega el mensaje y la app lo lee.
 // Paso 2: revisa el pedido armado, corrige lo que haga falta y lo guarda.
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, ClipboardPaste, Sparkles, PenLine, Plus, Minus, Trash2, AlertTriangle, MessageCircle, Store, MapPin } from "lucide-react";
-import { Sheet, Field, inputStyle, SelectCard } from "../ui";
+import { Field, inputStyle, SelectCard } from "../ui";
+import { Sheet } from "../ui/Sheet";
 import { leerPedido, contextoDelMenu } from "../../lib/leerPedido";
 import { armarLineas } from "../../lib/cuaderno";
 import { PAY_LABELS, soles } from "../../utils/pedidos";
@@ -113,6 +114,9 @@ export function NuevoPedidoSheet({ open, onClose, textoInicial = "", menuHoy, pl
   // Al abrir: si viene un mensaje compartido desde WhatsApp, se lee solo.
   useEffect(() => {
     if (!open) return;
+    // Al abrir se limpia el formulario y se llama al lector (IA o local): es
+    // sincronizar con algo externo, por eso va en un efecto.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     empezar(textoInicial);
     if (textoInicial.trim()) leer(textoInicial);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,5 +1,5 @@
 // src/components/ui/QtyCard.jsx
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
 // Tarjeta de cantidad: botones - y + para elegir cuántas unidades de un plato.

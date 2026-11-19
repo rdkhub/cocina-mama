@@ -228,8 +228,14 @@ export async function actualizarItem(id, cambios) {
   const row = {};
   if ("proteinas" in cambios) row.proteinas = cambios.proteinas;
   if ("agotado" in cambios) row.agotado = cambios.agotado;
+  if ("orden" in cambios) row.orden = cambios.orden;
   const { error } = await supabase.from("menu_dia_items").update(row).eq("id", id);
   if (error) throw error;
+}
+
+// Guarda el nuevo orden de los platos del menú (el cliente los ve así).
+export async function ordenarItems(idsEnOrden) {
+  await Promise.all(idsEnOrden.map((id, orden) => actualizarItem(id, { orden })));
 }
 
 // Fechas anteriores que tienen menú, para "Copiar menú de otro día".

@@ -1,5 +1,4 @@
 // src/components/admin/tabs/DeudasTab.jsx
-import React from "react";
 import { Phone } from "lucide-react";
 import { Tag, EmptyState } from "../../ui";
 import { PAY_LABELS, soles } from "../../../utils/pedidos";
