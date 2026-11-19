@@ -42,17 +42,9 @@ export function Encuentranos() {
   return (
     <section id="encuentranos" aria-labelledby="titulo-encuentranos" className="scroll-mt-4 mb-10">
       <div className="relative bg-white rounded-[28px] shadow-card border border-[#eee2cb] overflow-hidden">
-        {/* Mamá asoma por la esquina con su cucharón */}
-        <img
-          src="/mama/mama-cucharon.webp"
-          alt=""
-          width={565}
-          height={900}
-          loading="lazy"
-          className="absolute -right-5 -top-1 w-[34%] max-w-[150px] pointer-events-none select-none"
-        />
+        {/* La Mamá que acompaña al bajar termina parada sobre los botones de abajo (data-mama="final"). */}
         <div className="p-5 pb-4">
-          <h2 id="titulo-encuentranos" className="font-display text-[1.75rem] text-tinta leading-tight mb-1 pr-[30%]">
+          <h2 id="titulo-encuentranos" data-mama="texto" className="font-display text-[1.75rem] text-tinta leading-tight mb-1 pr-[30%]">
             Encuéntranos
           </h2>
           <p className="text-[14.5px] text-texto-secundario mb-4 pr-[30%]">Pasa a recoger o pide tu delivery.</p>
@@ -65,6 +57,8 @@ export function Encuentranos() {
               {DIRECCION.linea1}
               <br />
               <span className="text-texto-secundario">{DIRECCION.linea2}</span>
+              <br />
+              <span className="text-[14px] text-terracota-oscura font-semibold">{DIRECCION.referencia}</span>
             </Fila>
             <Fila Icono={Clock} titulo="Horario">
               {HORARIO.dias_texto}
@@ -87,7 +81,7 @@ export function Encuentranos() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 px-5 pb-5">
+        <div data-mama="final" className="grid grid-cols-2 gap-2.5 px-5 pb-5 pt-2">
           <m.a
             whileTap={{ scale: 0.96 }}
             href={MAPA_URL}
