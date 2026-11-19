@@ -8,15 +8,36 @@ import { Wallet, RotateCcw } from "lucide-react";
 import { Row, vibrar } from "../ui";
 import { PAY_LABELS, soles } from "../../utils/pedidos";
 
+// Mamá celebra con el cucharón en alto; el check verde se dibuja a su lado.
+function MamaCelebra() {
+  return (
+    <div className="relative w-44 mx-auto mb-4">
+      <m.img
+        src="/mama/mama-celebra.webp"
+        alt="Mamá celebrando con los brazos arriba"
+        width={553}
+        height={900}
+        initial={{ y: 60, opacity: 0, scale: 0.85 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ type: "spring", stiffness: 200, damping: 14 }}
+        className="w-full drop-shadow-[0_16px_24px_rgba(43,38,34,0.22)] select-none"
+      />
+      <div className="absolute bottom-6 -right-4">
+        <CheckDibujado />
+      </div>
+    </div>
+  );
+}
+
 function CheckDibujado() {
   return (
     <m.div
       initial={{ scale: 0.4, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 260, damping: 16 }}
-      className="w-24 h-24 rounded-full bg-salvia flex items-center justify-center mx-auto mb-6 shadow-[0_14px_34px_-10px_rgba(92,122,79,0.65)]"
+      transition={{ type: "spring", stiffness: 260, damping: 16, delay: 0.25 }}
+      className="w-16 h-16 rounded-full bg-salvia border-4 border-crema flex items-center justify-center shadow-[0_10px_24px_-8px_rgba(92,122,79,0.7)]"
     >
-      <svg width="52" height="52" viewBox="0 0 52 52" fill="none" aria-hidden>
+      <svg width="34" height="34" viewBox="0 0 52 52" fill="none" aria-hidden>
         <m.path
           d="M13 27.5 L22.5 37 L40 17"
           stroke="#fff"
@@ -58,10 +79,12 @@ export function OrderConfirmation({ menuHoy, justSubmitted, onReset }) {
   const aparece = (i) => ({ initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.35 + i * 0.08 } });
 
   return (
-    <div className="min-h-screen bg-crema flex items-center justify-center px-5 py-10">
+    // Arriba, no centrado: en celulares chicos el contenido es más alto que la
+    // pantalla y centrado se cortaba la cabeza de Mamá.
+    <div className="min-h-screen bg-crema flex justify-center px-5 pt-6 pb-10">
       <div className="max-w-sm w-full text-center">
-        <CheckDibujado />
-        <m.h2 {...aparece(0)} className="font-display text-[1.9rem] text-tinta mb-2">
+        <MamaCelebra />
+        <m.h2 {...aparece(0)} className="font-display text-[2.1rem] text-tinta mb-2">
           ¡Pedido recibido!
         </m.h2>
         <m.p {...aparece(1)} className="text-etiqueta text-[15.5px] leading-relaxed mb-7">

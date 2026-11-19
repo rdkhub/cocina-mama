@@ -7,6 +7,7 @@ import { m, AnimatePresence } from "motion/react";
 import { AlertCircle, Loader2, ChevronDown, PackageX, ShoppingBag, Store, MapPin, MessageCircle, Send } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { MenuHero } from "./MenuHero";
+import { Encuentranos } from "./Encuentranos";
 import { TarjetaSegundo, FilaExtra, Paso } from "./Tarjetas";
 import { ResumenPedido } from "./ResumenPedido";
 import { OrderConfirmation } from "./OrderConfirmation";
@@ -298,11 +299,11 @@ export function ClientView() {
   if (!dia || menuHoy.total === 0) {
     return (
       <div className="min-h-screen bg-crema flex flex-col">
-        <MenuHero menuHoy={menuHoy} onAdmin={abrirAdmin} />
-        <main className="max-w-md mx-auto px-5 -mt-8 relative z-10 flex-1 w-full">
-          <div className="bg-white rounded-3xl shadow-floating border border-[#eee2cb] p-7 text-center">
+        <MenuHero menuHoy={menuHoy} onAdmin={abrirAdmin} avatar="/mama/mama-cucharon.webp" />
+        <main className="max-w-md mx-auto px-5 pt-8 relative z-10 flex-1 w-full">
+          <div className="bg-white rounded-3xl shadow-floating border border-[#eee2cb] p-7 text-center mb-8">
             <PackageX size={34} className="mx-auto mb-3 text-arena-hover" />
-            <h2 className="font-display text-xl text-tinta mb-1.5">Hoy no hay menú publicado</h2>
+            <h2 className="font-display text-[1.5rem] text-tinta mb-1.5">Hoy no hay menú publicado</h2>
             <p className="text-texto-secundario text-[15px] leading-relaxed mb-4">Escríbenos por WhatsApp y te contamos qué hay para almorzar.</p>
             <a
               href={WHATSAPP_URL}
@@ -313,6 +314,7 @@ export function ClientView() {
               <MessageCircle size={17} /> Escribir por WhatsApp
             </a>
           </div>
+          <Encuentranos />
         </main>
       </div>
     );
@@ -538,6 +540,8 @@ export function ClientView() {
             </AnimatePresence>
           </div>
         </Paso>
+
+        <Encuentranos />
       </main>
 
       {/* Barra fija: cuántos platos lleva, total y enviar */}
