@@ -137,3 +137,151 @@ export function resumenPedido(order) {
   (order.adicionales || []).forEach((a) => partes.push(`${a.cantidad > 1 ? a.cantidad + " " : ""}${a.nombre}`));
   return partes.join(" · ");
 }
+
+// ===================== Cuaderno con botones =====================
+// El pedido se arma tocando: cada "menú" es una línea con su segundo,
+// cantidad (+/−), entrada (o "sin"), proteína y arroz. Los extras y las
+// entradas aparte se cuentan con +/−.
+//
+// estado = {
+//   menus: [{ key, segundoId, proteina, entradaId: id | "sin" | null, arroz, cantidad }],
+//   extras: { [platoId]: cantidad },
+//   entradasExtra: { [platoId]: cantidad },
+// }
+
+let siguiente = 0;
+export const nuevaClave = () => `m${Date.now().toString(36)}${siguiente++}`;
+
+export const ESTADO_VACIO = { menus: [], extras: {}, entradasExtra: {} };
+
+// Línea nueva para un segundo: si hoy hay una sola entrada, ya va elegida.
+export function nuevaLinea(segundo, ctx) {
+  return {
+    key: nuevaClave(),
+    segundoId: segundo.id,
+    proteina: segundo.requiereProteina && segundo.proteinas?.length === 1 ? segundo.proteinas[0] : "",
+    entradaId: ctx.entradas.length === 1 ? ctx.entradas[0].id : ctx.entradas.length === 0 ? "sin" : null,
+    arroz: segundo.permiteArroz ? "con" : null,
+    cantidad: 1,
+  };
+}
+
+// Estado de botones → pedido (líneas como en la tabla, total y lo que falta).
+export function armarDesdeBotones(estado, ctx, dia, modo = "recojo") {
+  const segPorId = new Map(ctx.segundos.map((s) => [s.id, s]));
+  const menus = estado.menus
+    .filter((m) => m.cantidad > 0 && segPorId.has(m.segundoId))
+    .map((m) => ({ ...m, entradaId: m.entradaId && m.entradaId !== "sin" ? m.entradaId : null }));
+  const aLista = (obj) =>
+    Object.entries(obj || {})
+      .filter(([, c]) => c > 0)
+      .map(([id, cantidad]) => ({ id, cantidad }));
+  const lineas = armarLineas({ menus, entradasExtra: aLista(estado.entradasExtra), adicionales: aLista(estado.extras) }, ctx);
+
+  let falta = "";
+  for (const m of estado.menus) {
+    const s = segPorId.get(m.segundoId);
+    if (!s || m.cantidad < 1) continue;
+    if (s.requiereProteina && !m.proteina) {
+      falta = `Elige la proteína de ${s.nombre}.`;
+      break;
+    }
+    if (ctx.entradas.length > 0 && !m.entradaId) {
+      falta = `Elige la entrada de ${s.nombre} (o "Sin entrada").`;
+      break;
+    }
+  }
+  const vacio = lineas.fondos.length + lineas.entradas.length + lineas.adicionales.length === 0;
+  return { lineas, total: calcularTotalDia(lineas, dia, modo), falta, vacio };
+}
+
+// Pedido guardado → estado de botones (para corregirlo).
+export function estadoDesdePedido(order, ctx) {
+  const entradasHoy = new Set(ctx.entradas.map((e) => e.id));
+  const menus = (order.fondos || []).map((f) => ({
+    key: nuevaClave(),
+    segundoId: f.platoId,
+    proteina: f.proteina || "",
+    entradaId: f.entradaId && entradasHoy.has(f.entradaId) ? f.entradaId : "sin",
+    arroz: f.arroz || null,
+    cantidad: f.cantidad || 1,
+  }));
+  // Las entradas del pedido incluyen las que van con cada menú; las que sobran son "aparte".
+  const incluidas = {};
+  menus.forEach((m) => m.entradaId !== "sin" && (incluidas[m.entradaId] = (incluidas[m.entradaId] || 0) + m.cantidad));
+  const entradasExtra = {};
+  (order.entradas || []).forEach((e) => {
+    const extra = (e.cantidad || 0) - (incluidas[e.platoId] || 0);
+    if (extra > 0) entradasExtra[e.platoId] = extra;
+  });
+  const extras = {};
+  (order.adicionales || []).forEach((a) => a.platoId && (extras[a.platoId] = (extras[a.platoId] || 0) + (a.cantidad || 0)));
+  return { menus, extras, entradasExtra };
+}
+
+// ===================== Para la cocina =====================
+// Cuántos de cada cosa hay que preparar, sin nombres de clientes.
+// Devuelve { segundos: [{ nombre, cantidad, variantes: [{ texto, cantidad }] }],
+//            entradas: [{ nombre, cantidad }], extras: [{ nombre, cantidad }],
+//            menus, pedidos, delivery, llevar }
+export function conteoCocina(orders) {
+  const seg = new Map();
+  const ent = new Map();
+  const ext = new Map();
+  let menus = 0;
+  let delivery = 0;
+  const sumar = (mapa, nombre, n) => mapa.set(nombre, (mapa.get(nombre) || 0) + n);
+  for (const o of orders) {
+    if (o.modo === "delivery") delivery++;
+    for (const f of o.fondos || []) {
+      const n = f.cantidad || 0;
+      menus += n;
+      if (!seg.has(f.nombre)) seg.set(f.nombre, { nombre: f.nombre, cantidad: 0, variantes: new Map() });
+      const s = seg.get(f.nombre);
+      s.cantidad += n;
+      const partes = [f.proteina, f.arroz === "sin" ? "sin arroz" : ""].filter(Boolean);
+      if (partes.length) sumar(s.variantes, partes.join(", "), n);
+    }
+    for (const e of o.entradas || []) sumar(ent, e.nombre, e.cantidad || 0);
+    for (const a of o.adicionales || []) sumar(ext, a.nombre, a.cantidad || 0);
+  }
+  const ordenar = (lista) => lista.sort((a, b) => b.cantidad - a.cantidad || a.nombre.localeCompare(b.nombre));
+  return {
+    segundos: ordenar(
+      Array.from(seg.values()).map((s) => ({
+        nombre: s.nombre,
+        cantidad: s.cantidad,
+        variantes: Array.from(s.variantes, ([texto, cantidad]) => ({ texto, cantidad })).sort((a, b) => b.cantidad - a.cantidad),
+      }))
+    ),
+    entradas: ordenar(Array.from(ent, ([nombre, cantidad]) => ({ nombre, cantidad }))),
+    extras: ordenar(Array.from(ext, ([nombre, cantidad]) => ({ nombre, cantidad }))),
+    menus,
+    pedidos: orders.length,
+    delivery,
+    llevar: orders.length - delivery,
+  };
+}
+
+// Texto para mandar a la cocina por WhatsApp o copiar.
+export function textoCocina(c, titulo = "Para la cocina") {
+  const l = [`*${titulo}*`, `${c.menus} menús · ${c.pedidos} pedidos (${c.llevar} para llevar, ${c.delivery} delivery)`, ""];
+  if (c.segundos.length) {
+    l.push("*Segundos*");
+    c.segundos.forEach((s) => {
+      l.push(`${s.cantidad} × ${s.nombre}`);
+      s.variantes.forEach((v) => l.push(`    ${v.cantidad} ${v.texto}`));
+    });
+    l.push("");
+  }
+  if (c.entradas.length) {
+    l.push("*Entradas*");
+    c.entradas.forEach((e) => l.push(`${e.cantidad} × ${e.nombre}`));
+    l.push("");
+  }
+  if (c.extras.length) {
+    l.push("*Extras*");
+    c.extras.forEach((e) => l.push(`${e.cantidad} × ${e.nombre}`));
+  }
+  return l.join("\n").trim();
+}

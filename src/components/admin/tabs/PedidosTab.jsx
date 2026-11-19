@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react";
 import { MessageCirclePlus } from "lucide-react";
 import { EmptyState } from "../../ui";
 import { OrderCard } from "../OrderCard";
+import { ResumenCocina } from "../ResumenCocina";
 import { soles } from "../../../utils/pedidos";
 
 export function PedidosTab({ onNuevoPedido, todaysOrders, totalVendidoHoy, onOrderUpdate, onOrderDelete, resaltadoId }) {
@@ -30,6 +31,8 @@ export function PedidosTab({ onNuevoPedido, todaysOrders, totalVendidoHoy, onOrd
           <span className="text-dorado text-xl font-semibold font-mono">{soles(totalVendidoHoy)}</span>
         </div>
       )}
+      <ResumenCocina orders={todaysOrders} />
+      <h2 className="font-display text-[1.2rem] text-tinta mb-2.5">Pedidos</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {todaysOrders.length === 0 && (
           <div className="sm:col-span-2">
