@@ -1,11 +1,20 @@
 // src/context/AppContext.jsx
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "../supabaseClient";
-import { todayKey, loadOrders, createOrder, updateOrder, deleteOrder } from "../data";
+import { todayKey, loadOrders, createOrder, updateOrder, updateOrderContenido, deleteOrder } from "../data";
 import { cargarPlatos, cargarMenuDia, cargarProteinas, cargarAjustes, CATEGORIAS_EXTRA } from "../lib/catalogo";
 import { entrarConPin, salir, sesionAdminActiva } from "../lib/auth";
 
 const AppContext = createContext(null);
+
+// Error de la base de datos al guardar un pedido del admin → mensaje para la pantalla.
+function errorDeGuardado(e) {
+  const msg = String(e?.message || "");
+  if (msg.includes("AGOTADO")) return new Error(`Agotado: ${msg.split("AGOTADO:")[1]?.trim() || "un plato"}. Cámbialo.`, { cause: e });
+  if (msg.includes("MENU_NO_DISPONIBLE")) return new Error("Primero publica el menú de hoy.", { cause: e });
+  if (msg.includes("PEDIDO_INVALIDO")) return new Error("El pedido está vacío o tiene una cantidad rara.", { cause: e });
+  return new Error("No se pudo guardar. Revisa tu conexión.", { cause: e });
+}
 
 // Clave vieja: antes el desbloqueo se guardaba solo en el navegador. Se
 // borra para que nadie quede "desbloqueado" sin haber puesto el PIN real.
@@ -275,13 +284,25 @@ export function AppProvider({ children }) {
     try {
       await createOrder(order);
     } catch (e) {
-      const msg = String(e?.message || "");
-      if (msg.includes("AGOTADO")) throw new Error(`Agotado: ${msg.split("AGOTADO:")[1]?.trim() || "un plato"}. Cámbialo.`, { cause: e });
-      if (msg.includes("MENU_NO_DISPONIBLE")) throw new Error("Primero publica el menú de hoy.", { cause: e });
-      throw new Error("No se pudo guardar. Revisa tu conexión.", { cause: e });
+      throw errorDeGuardado(e);
     }
     await refreshOrders();
     showToast(`Pedido de ${order.nombre} guardado`, "success");
+  };
+
+  // Corregir un pedido ya guardado (Cuaderno). Si cambia la forma de pago,
+  // "pagado" se ajusta igual que al crearlo.
+  const editarPedidoAdmin = async (id, data) => {
+    const antes = orders.find((o) => o.id === id);
+    const cambios = { ...data };
+    if (antes && data.pago && data.pago !== antes.pago) cambios.pagado = data.pago !== "fiado";
+    try {
+      await updateOrderContenido(id, cambios);
+    } catch (e) {
+      throw errorDeGuardado(e);
+    }
+    await refreshOrders();
+    showToast(`Pedido de ${data.nombre} corregido`, "success");
   };
 
   const handleOrderUpdate = async (id, patch) => {
@@ -328,6 +349,7 @@ export function AppProvider({ children }) {
     desbloqueado,
     desbloquear,
     crearPedidoAdmin,
+    editarPedidoAdmin,
     mensajeCompartido,
     setMensajeCompartido,
     bloquear,
