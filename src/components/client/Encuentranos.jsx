@@ -48,7 +48,8 @@ export function Encuentranos() {
             Encuéntranos
           </h2>
           <p className="text-[14.5px] text-texto-secundario mb-4 pr-[30%]">Pasa a recoger o pide tu delivery.</p>
-          <div className="pr-[30%] mb-5">
+          {/* Sin el margen de la Mamá: ella se para junto al título, no aquí, y así el aviso entra en una línea. */}
+          <div className="mb-5">
             <EstadoLocal />
           </div>
 
@@ -73,7 +74,7 @@ export function Encuentranos() {
                 type="button"
                 whileTap={{ scale: 0.92 }}
                 onClick={copiar}
-                className="ml-2 inline-flex items-center gap-1 text-[13px] font-semibold text-terracota-oscura bg-terracota/10 rounded-full px-2.5 py-1 align-middle"
+                className="relative ml-2 inline-flex items-center gap-1 after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-[''] text-[13px] font-semibold text-terracota-oscura bg-terracota/10 rounded-full px-2.5 py-1 align-middle"
               >
                 {copiado ? <Check size={13} /> : <Copy size={13} />} {copiado ? "Copiado" : "Copiar"}
               </m.button>
