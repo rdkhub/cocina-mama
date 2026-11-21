@@ -1,0 +1,145 @@
+# PENDIENTES — Cocina de Mamá
+
+Última actualización: 21-nov-2026 (cierre de la sesión del 18 al 21 de noviembre).
+
+---
+
+## 1. Dónde estamos
+
+- **Todo lo trabajado en esta sesión ya está en producción** (`main`, desplegado en Vercel): PR #10, #11, #12, #13 y #14 fusionados.
+- **Rama de este cierre:** `docs/claude-md` (PR #9). Trae `CLAUDE.md` actualizado y este `PENDIENTES.md`, más `main` fusionado adentro. **Falta tu OK para hacer merge del PR #9.**
+- **Último commit en `main`:** `320952e` (merge del PR #14, cuaderno con botones).
+- **PR abiertos:**
+  - **#9 `docs/claude-md`**: CLAUDE.md + PENDIENTES.md. Esperando tu OK.
+  - **#8 `feature/foto-cuaderno`** (20-oct): leer con IA una foto de la hoja del cuaderno. **No se revisó en esta sesión.** Seguramente tiene conflictos con todo lo nuevo (NuevoPedidoSheet, Cuaderno). Ver el punto 4.
+- **Proyecto "lector automático de WhatsApp" (fase B): DESCARTADO por ahora.** No hay forma oficial y gratis sin RUC (ver la sección 2.1). La fase 1 (compartir mensajes a la app y leerlos con IA o con el lector local) sigue funcionando.
+
+---
+
+## 2. Qué hicimos en esta sesión (en orden)
+
+### 2.1 Investigación: que los mensajes de WhatsApp entren solos (fase A, sin código)
+- **Coexistence** (API oficial de WhatsApp con el mismo número y la app Business del papá): funciona en Perú. Recibir mensajes por webhook cuesta $0 en Meta y no hay mensualidad de la API. Pero hace falta un **Tech Provider o un BSP** (proveedor).
+- **Ser Tech Provider propio:** exige verificar el negocio con Meta, y para eso hace falta RUC.
+- **YCloud (plan Free, $0):** su guía de Coexistence exige "Business Verification" → **sin RUC no se puede**.
+- **Kapso:** no pide verificación, pero con 50–60 pedidos al día haría falta el plan Pro → $25/mes. **Rechazado: muy caro.**
+- **Dualhook:** $12/mes, webhooks directo de Meta. **Rechazado: muy caro.**
+- **App Android que lee las notificaciones:** gratis pero no es la API oficial, pierde audios y fotos, y Android la cierra. **No se hizo.**
+- **Decisión:** no hay lector automático. El negocio **no tiene RUC** y no se paga un BSP.
+- **Costo estimado de la IA** (Claude Haiku 5.5, que ya usa la función `leer-pedido`): unos $2–5 al mes si algún día se activa la lectura automática.
+
+### 2.2 PR #10: Cuaderno (pestaña nueva del panel)
+- Planilla donde el papá anota cada pedido. **Se registra solo como pedido real**: aparece en Hoy, Deben, Historial y Semanal, con Realtime en todos los celulares.
+- Archivos: `src/components/admin/tabs/CuadernoTab.jsx`, `src/lib/cuaderno.js`, `src/context/AppContext.jsx` (`editarPedidoAdmin`), `src/data.js` (`updateOrderContenido`) y `src/utils/pedidos.js` (`calcularTotalDia`).
+- **Migración** `supabase/migrations/20261118120000_pedidos_editar_contenido.sql`: `validar_pedido` también corre al editar platos o modo (trigger `orders_revalidar_pedido`). Al editar no revisa "agotado". **Ya aplicada en producción** (18-nov) y verificada con una prueba que se deshizo sola.
+- Vitest agregado (`npm test`), más `npm run demo` (Supabase falso con datos inventados: `demo/supabaseFalso.js` y `vite.config.demo.js`).
+
+### 2.3 Firma de Claude
+- Por pedido tuyo, se quitó "Generated with/by Claude Code" de las descripciones de los PR #1 a #10.
+- Los commits viejos con `Co-Authored-By: Claude` se **dejaron** (11 commits). Decidiste no reescribir la historia con force push.
+- **Regla desde entonces:** ningún commit ni PR lleva firma de Claude.
+
+### 2.4 PR #11: pulido visual
+- **Cliente:**
+  - primero el plato, y la entrada, la proteína y el arroz dentro de la tarjeta;
+  - barra fija con el total y "Enviar pedido" (si quedó un plato elegido sin agregar, se agrega solo);
+  - los errores llevan al campo que falta;
+  - **el pago ya no viene marcado en "Fiado"**;
+  - agotados en gris con "Agotado hoy";
+  - confeti al confirmar.
+- **Panel:** barra de pestañas abajo (Cuaderno, Hoy, Menú, Deben, Más). La pestaña Menú quedó en dos partes: "Hoy en el menú", que se ordena arrastrando y guarda `menu_dia_items.orden`, y el catálogo abajo. Los precios quedaron en una línea con "Editar".
+- **Librerías:** `motion` (con LazyMotion), `sonner` (avisos), `vaul` (paneles que se arrastran), `@dnd-kit/*` y `canvas-confetti`.
+- **Rendimiento:** el panel se carga aparte (`React.lazy`) y `Sheet` (vaul) se importa directo de `ui/Sheet` para que no entre al JS del cliente.
+- **Lint:** pasó de 38 errores a **0**.
+
+### 2.5 Impeccable y Playwright
+- **Impeccable** (`pbakaus/impeccable`, Apache-2.0) instalado para el proyecto en `.claude/skills/impeccable` y `.claude/agents/`. Los hooks están en `.claude/settings.local.json`, que no se sube.
+  - ESLint ignora `.claude/`.
+  - `.gitattributes` mantiene el lanzador con saltos de línea LF.
+- **Playwright MCP:** ya estaba configurado globalmente en `~/.claude.json` (`cmd /c npx @playwright/mcp@latest`, versión 0.0.86). Funciona.
+
+### 2.6 PR #12: marca de Mamá
+- **Avatar** de la mamá hecho en **Higgsfield con Nano Banana**, en 3 poses: saluda (con la olla), celebra y cucharón.
+  - Están en `public/mama/` sin fondo ni marca de agua, más versiones `-chica` de 220 px.
+  - Scripts para quitar el fondo: en el scratchpad de la sesión, no en el repo.
+- **Encuéntranos:** dirección, horario, aviso en vivo de abierto/cerrado (`src/utils/horario.js`, hora de Lima), WhatsApp con botón copiar, "Cómo llegar" y mapa al tocar.
+- **Vista previa del link:** `public/og-cocina-de-mama.jpg` (1200×630).
+- **Letras propias:** Young Serif (títulos) y Figtree (texto) en `public/fonts/`. Reemplazan a Fraunces e Inter, que Impeccable marca como sobreusadas.
+- **Contraste:** ocre más oscuro (`#86672E`), textos de ejemplo de los campos (`#7D6F58`) y botón copiar.
+
+### 2.7 PR #13: portada animada (estilo de la web de Pollería Don Andrés)
+- **Referencia:** la web de Walter Rojas (`polleria-don-andres.pages.dev`). Se estudió su código: intro, mascota que acompaña al bajar y saltos.
+- **Portada:**
+  - pared de **azulejos de cocina** (`public/azulejo.svg`, diseño propio; lo elegiste tú);
+  - letrero "Cocina de Mamá" en 3D (Lilita One) que cae y golpea la pared, con temblor y vapor;
+  - eslogan "Almuerzos caseros / hechos por Mamá".
+- **Mamá viva** (`src/lib/mamaGuia.js`):
+  - sube desde detrás del letrero, respira y salta;
+  - **una Mamá chiquita acompaña al bajar** de parada en parada (`data-mama`): junto a los títulos, **asomada en "Elige tu plato"** y al final sobre los botones de Encuéntranos;
+  - salta a los botones que tocas y **lleva el plato a la bolsa** al agregarlo.
+- **Correcciones:** borde blanco del avatar, botón de WhatsApp tapado en computadora y dirección (referencia del taller y coordenadas).
+- **Movimiento reducido:** si el sistema lo pide, todo queda quieto. La clase `forzar-movimiento` en `<html>` es solo para pruebas.
+
+### 2.8 PR #14: cuaderno con botones y "Para la cocina"
+- **Cuaderno:**
+  - se toca el plato y se agrega; si ya está, suma 1;
+  - cada tarjeta tiene **− / +** (en 1, un tacho), y entrada, proteína y arroz con botones;
+  - "Separar uno" y "+ Otro diferente" para variantes;
+  - extras con + / −;
+  - "Escribir rápido" se convierte en botones;
+  - corregir carga el pedido en los botones.
+- **Hoy:** cuadro **"Para la cocina"** con cuántos de cada plato (con proteínas y "sin arroz"), entradas y extras, **sin nombres**.
+  - "Todo el día" o "Falta servir";
+  - botones WhatsApp y Copiar;
+  - no cuenta los pedidos de prueba.
+- 16 tests nuevos (`src/lib/__tests__/cuadernoBotones.test.js`), escritos por OpenCode y revisados. **Total: 57 tests.**
+
+---
+
+## 3. Próximos pasos (en orden)
+
+1. **Merge del PR #9** (este CLAUDE.md y PENDIENTES.md), con tu OK.
+2. **Probar en un celular real** lo que no se pudo probar aquí:
+   - intro y Mamá en movimiento;
+   - vibración;
+   - arrastrar para ordenar el menú;
+   - paneles que se cierran arrastrando;
+   - cuaderno con botones y cuadro de cocina en el celular del papá.
+3. **Ver la vista previa del link en WhatsApp.** Si sale el ícono viejo, compartir `https://cocina-mama-roan.vercel.app/?v=2`.
+4. **Revisar el pin del mapa** (Taller de motos Garro) y confirmar que "Cómo llegar" lleva a la casa.
+5. **Decidir qué hacer con el PR #8 (foto del cuaderno):**
+   - rehacerlo sobre el código actual,
+   - o cerrarlo, porque el cuaderno con botones ya cubre buena parte de la necesidad.
+6. **Actualizar el README**, que está desactualizado: habla de `ADMIN_PIN = "1234"` y de un `.env.example` que no existe. Puede hacerlo OpenCode, sin datos reales.
+7. **(Opcional) Pose "durmiendo"** para "Hoy no hay menú" o cerrado. Faltó porque se acabó el saldo de Higgsfield. Ahora se usa la pose del cucharón.
+8. **(Opcional) Partir el JS del cliente:** pesa 608 kB (182 kB gzip) por Supabase, motion y sonner.
+
+---
+
+## 4. Problemas abiertos y cosas prometidas
+
+- **Esta computadora tiene apagados los "Efectos de animación" de Windows.** Chrome avisa "reducir movimiento" y la app (igual que la web de la pollería) se muestra quieta. Para verla moverse: *Configuración → Accesibilidad → Efectos visuales → Efectos de animación*.
+- **La vista previa de Vercel de cada PR es privada:** pide entrar con tu cuenta de Vercel y usa la **base de datos real**. Los pedidos de prueba van con "PRUEBA" en el nombre.
+- **PR #8 sin revisar** (probablemente con conflictos).
+- **Impeccable** marca dos cosas que se dejaron **a propósito**: el fondo crema (identidad de la app) y la sombra "mecánica" de los botones (`btn-cta`).
+- **No probado en un celular real:** todo lo del punto 3.2.
+
+---
+
+## 5. Datos que diste (para no volver a preguntarlos)
+
+- **Horario:** lunes a sábado, 12:00 p. m. a 4:00 p. m. Domingo cerrado.
+- **Dirección:** Calle Pongo de Rentema, Mz. A, Lt. 18, Las Lomas de La Molina Vieja, La Molina. **A una casa del Taller de motos Garro**, junto al Parque Coop. Constructores N.º 2. Coordenadas del taller: `-12.1061397, -76.9349552`.
+- **WhatsApp del negocio** (el del papá): 998 869 843 (`51998869843`).
+- **El negocio no tiene RUC** (familiar, no formalizado).
+- **Volumen:** unos 50 a 60 pedidos al día.
+- **Presupuesto:** nada de servicios pagados para WhatsApp; $12–25 al mes ya es "muy caro".
+- **WhatsApp:** **no** quieres pedidos "por la app vía WhatsApp". La app y WhatsApp son canales separados: el que pide por la app pide por la app (y llega notificación), y el que pide por WhatsApp se anota en el Cuaderno.
+- **Los clientes no usan mucho la app** (mandan audios), por eso el Cuaderno es la herramienta principal del papá.
+- **Cocina:** solo importa **cuántos de cada plato**, no de quién es. Eso lo ve el que arma el pedido.
+- **Diseño:** te gusta el estilo de la web de Pollería Don Andrés (intro con la marca, mascota chica que se mueve y acompaña al bajar). Fondo: **azulejos de cocina**. Avatar de la mamá con sombrero de paja, mandil crema con corazón y cucharón.
+- **Herramientas:** Higgsfield para imágenes (modelo **Nano Banana**; GPT Image para logos con texto). Prompts usados: personaje Pixar-like, "same character, same outfit", fondo blanco liso.
+- **Forma de trabajar:**
+  - **avísame antes de hacer cambios**;
+  - todo en rama + PR, y merge solo con tu OK;
+  - **sin firma de Claude** en commits ni PR.
