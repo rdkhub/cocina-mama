@@ -329,7 +329,10 @@ export function ClientView() {
     );
   }
 
-  const nPaso = { modo: 1, plato: 2, extras: 3, datos: extrasDisp.length || entradasDisp.length ? 4 : 3 };
+  // El paso 3 («¿Algo más?») solo aparece si hay extras en el menú; la entrada
+  // extra va dentro del paso 2 y no cuenta como paso propio.
+  const hayPasoExtras = menuHoy.extras.length > 0;
+  const nPaso = { modo: 1, plato: 2, extras: 3, datos: hayPasoExtras ? 4 : 3 };
   const errorEn = (campo) => error.campo === campo;
 
   return (
@@ -419,7 +422,7 @@ export function ClientView() {
         </Paso>
 
         {/* Paso 3: extras */}
-        {(extrasDisp.length > 0 || menuHoy.extras.length > 0) && (
+        {hayPasoExtras && (
           <Paso numero={nPaso.extras} titulo="¿Algo más?" ayuda="Postres, bebidas y adicionales, cada uno aparte." id="paso-extras" listo={totalExtras > 0} mama="texto">
             <div className="space-y-2.5">
               {ordenar(menuHoy.extras).map((x) => (
