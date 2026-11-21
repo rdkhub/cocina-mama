@@ -6,7 +6,15 @@
 
 ## 1. Dónde estamos
 
-- **En producción** (`main`, desplegado en Vercel): PR #9 a #18 fusionados. Último commit de código en `main`: `baafadb` (merge del PR #18, Cuaderno nuevo). Migración `adicionales_fijos` aplicada en Supabase.
+- **En producción** (`main`, desplegado en Vercel): PR #9 a #20 fusionados. Último commit de código en `main`: `b47a229` (merge del PR #20, "En casa" y Deben por semana). Migraciones `adicionales_fijos` y `modo_en_casa` aplicadas en Supabase.
+
+### Sesión del 21-nov (noche): "En casa", Deben por semana y seguridad
+- **Adicionales creados en producción** (Platos, categoría Adicional): Presa extra S/ 6, Plancha extra S/ 6, Bistec extra S/ 6, Huevo sancochado S/ 1.
+- **PR #20 (fusionado):** modo **"En casa"** (come aquí) en el Cuaderno, a `menu_dia.precio_casa` (S/ 11 por defecto, editable en Precios de hoy); entrada extra y adicionales igual. **Deben** agrupado por semana (lunes a domingo) y por cliente, desplegable, con pedidos día por día, cuántos pedidos y menús, y "Pagó toda la semana".
+- **Migración `modo_en_casa`** (`20261121130000_modo_en_casa.sql`, en Supabase `20261121210156`): columna `precio_casa` (31 días quedaron en S/ 11); `validar_pedido` solo acepta recojo/delivery/casa y **"casa" solo el admin**. Probada con transacción que se deshizo sola: sin admin → rechazado; modo inventado → rechazado; como admin, 3 menús → S/ 33.
+- **Pedido de Vania del 21-nov** pasado a "En casa": S/ 36 → S/ 33 (sigue "Debe"). El del 19-nov (pagado) no se tocó.
+- **Revisión de seguridad:** sin PIN no se lee nada (prueba real desde afuera: pedidos, admins y suscripciones vacíos; `es_admin` = false; PIN falso rechazado). RLS activo en todas las tablas; solo el admin lee/edita/borra pedidos. Sin `.env`, claves, tokens ni PIN en el repo ni en el historial; el bundle solo trae la clave publishable. Hay 1 usuario en Auth y es el admin.
+- **Recomendaciones de seguridad pendientes** (no se cambiaron): en Supabase → Authentication apagar "Allow new users to sign up" y activar "Leaked password protection"; PIN de 8 dígitos; `quitar_suscripcion` no revisa `es_admin` (riesgo bajo, se arregla con una migración chica).
 - **PR abiertos:**
   - **#8 `feature/foto-cuaderno`** (20-oct): leer con IA una foto de la hoja del cuaderno. **Tiene conflictos con `main`.** Falta tu decisión (ver el paso 5 de la sección 3).
 - **Ramas viejas sin borrar** (no se borran sin tu permiso): `docs/claude-md` y `fix/numeracion-pasos`, ya fusionadas.
@@ -114,7 +122,7 @@ Pedido de Rodrigo (urgente: corregir pedidos).
 
 ## 3. Próximos pasos (en orden)
 
-1. **Crear en Platos los adicionales** (categoría Adicional, con precio): presa extra S/ 6, plancha extra S/ 6, bistec extra S/ 6, huevo sancochado (precio por definir). Hasta entonces la sección "Adicionales" del Cuaderno no aparece. "Alitas" tiene precio 0 y no sale.
+1. **Seguridad de Supabase Auth** (lo hace Rodrigo en el panel de Supabase): apagar registros nuevos, activar protección de contraseñas filtradas y subir el PIN a 8 dígitos. Opcional: migración para que `quitar_suscripcion` revise `es_admin`.
 2. **Probar en un celular real** lo que no se pudo probar aquí:
    - intro y Mamá en movimiento;
    - vibración;
