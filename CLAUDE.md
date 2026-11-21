@@ -71,4 +71,4 @@ supabase/
 
 ## Pendientes conocidos
 
-Ver `PENDIENTES.md`. En corto: README desactualizado (habla de `ADMIN_PIN = "1234"` y de un `.env.example` que no existe), PR #8 (foto del cuaderno) sin revisar, falta probar todo en un celular real.
+Ver `PENDIENTES.md`. En corto: decidir qué hacer con el PR #8 (foto del cuaderno, con conflictos) y falta probar todo en un celular real.
