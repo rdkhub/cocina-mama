@@ -1,18 +1,24 @@
 # PENDIENTES — Cocina de Mamá
 
-Última actualización: 21-nov-2026 (cierre de la sesión del 18 al 21 de noviembre).
+Última actualización: 21-nov-2026 (sesión del 21 de noviembre, después del cierre del 18 al 21).
 
 ---
 
 ## 1. Dónde estamos
 
-- **Todo lo trabajado en esta sesión ya está en producción** (`main`, desplegado en Vercel): PR #10, #11, #12, #13 y #14 fusionados.
-- **Rama de este cierre:** `docs/claude-md` (PR #9). Trae `CLAUDE.md` actualizado y este `PENDIENTES.md`, más `main` fusionado adentro. **Falta tu OK para hacer merge del PR #9.**
-- **Último commit en `main`:** `320952e` (merge del PR #14, cuaderno con botones).
+- **En producción** (`main`, desplegado en Vercel): PR #9 a #15 fusionados. Último commit en `main`: `791badf` (merge del PR #15).
 - **PR abiertos:**
-  - **#9 `docs/claude-md`**: CLAUDE.md + PENDIENTES.md. Esperando tu OK.
-  - **#8 `feature/foto-cuaderno`** (20-oct): leer con IA una foto de la hoja del cuaderno. **No se revisó en esta sesión.** Seguramente tiene conflictos con todo lo nuevo (NuevoPedidoSheet, Cuaderno). Ver el punto 4.
+  - **#16 `fix/movil-toques`**: botones más fáciles de tocar en celular y textos que no se cortan. Esperando tu OK.
+  - **#17 `docs/readme-pendientes`**: README reescrito y este PENDIENTES.md al día. Esperando tu OK.
+  - **#8 `feature/foto-cuaderno`** (20-oct): leer con IA una foto de la hoja del cuaderno. **Tiene conflictos con `main`.** Falta tu decisión (ver el paso 5 de la sección 3).
+- **Ramas viejas sin borrar** (no se borran sin tu permiso): `docs/claude-md` y `fix/numeracion-pasos`, ya fusionadas.
 - **Proyecto "lector automático de WhatsApp" (fase B): DESCARTADO por ahora.** No hay forma oficial y gratis sin RUC (ver la sección 2.1). La fase 1 (compartir mensajes a la app y leerlos con IA o con el lector local) sigue funcionando.
+
+### Sesión del 21-nov
+- **PR #15 (fusionado):** la numeración de pasos saltaba del 2 al 4 cuando había entrada extra pero no extras. Ahora el paso 3 y el número de "Tus datos" dependen de la misma condición (`hayPasoExtras` en `ClientView.jsx`).
+- **PR #16 (abierto):** candado, WhatsApp de arriba y "Copiar" con área de toque de 44 px o más (un `::after` invisible, se ven igual); la fecha y el menú de la tarjeta de precios ya no se parten a la mitad; el aviso de horario de Encuéntranos entra en una línea.
+- **PR #17 (abierto):** README reescrito por OpenCode y revisado (ya no habla de `ADMIN_PIN` ni de `.env.example`).
+- **PR #8 revisado:** tiene conflictos (toca `AdminView`, `PedidosTab`, `AppContext`, `leerPedido`). Su función `leer-cuaderno` **ya está desplegada en Supabase** aunque el código no está en `main`; solo la puede usar el admin (`es_admin`), así que no hay riesgo de gasto por terceros.
 
 ---
 
@@ -98,19 +104,20 @@
 
 ## 3. Próximos pasos (en orden)
 
-1. **Merge del PR #9** (este CLAUDE.md y PENDIENTES.md), con tu OK.
+1. **Merge de los PR #16 y #17**, con tu OK.
 2. **Probar en un celular real** lo que no se pudo probar aquí:
    - intro y Mamá en movimiento;
    - vibración;
    - arrastrar para ordenar el menú;
    - paneles que se cierran arrastrando;
-   - cuaderno con botones y cuadro de cocina en el celular del papá.
+   - cuaderno con botones y cuadro de cocina en el celular del papá;
+   - que los botones del PR #16 se toquen bien con el dedo.
 3. **Ver la vista previa del link en WhatsApp.** Si sale el ícono viejo, compartir `https://cocina-mama-roan.vercel.app/?v=2`.
 4. **Revisar el pin del mapa** (Taller de motos Garro) y confirmar que "Cómo llegar" lleva a la casa.
-5. **Decidir qué hacer con el PR #8 (foto del cuaderno):**
-   - rehacerlo sobre el código actual,
-   - o cerrarlo, porque el cuaderno con botones ya cubre buena parte de la necesidad.
-6. **Actualizar el README**, que está desactualizado: habla de `ADMIN_PIN = "1234"` y de un `.env.example` que no existe. Puede hacerlo OpenCode, sin datos reales.
+5. **Decidir qué hacer con el PR #8 (foto del cuaderno)**, que tiene conflictos:
+   - rehacerlo sobre el código actual (la función `leer-cuaderno` ya está desplegada),
+   - o cerrarlo, porque el cuaderno con botones ya cubre buena parte de la necesidad. Si se cierra, conviene borrar también la función `leer-cuaderno` de Supabase.
+6. ~~Actualizar el README~~: hecho en el PR #17.
 7. **(Opcional) Pose "durmiendo"** para "Hoy no hay menú" o cerrado. Faltó porque se acabó el saldo de Higgsfield. Ahora se usa la pose del cucharón.
 8. **(Opcional) Partir el JS del cliente:** pesa 608 kB (182 kB gzip) por Supabase, motion y sonner.
 
@@ -120,7 +127,7 @@
 
 - **Esta computadora tiene apagados los "Efectos de animación" de Windows.** Chrome avisa "reducir movimiento" y la app (igual que la web de la pollería) se muestra quieta. Para verla moverse: *Configuración → Accesibilidad → Efectos visuales → Efectos de animación*.
 - **La vista previa de Vercel de cada PR es privada:** pide entrar con tu cuenta de Vercel y usa la **base de datos real**. Los pedidos de prueba van con "PRUEBA" en el nombre.
-- **PR #8 sin revisar** (probablemente con conflictos).
+- **PR #8 con conflictos** y su función `leer-cuaderno` desplegada sin que el código esté en `main`.
 - **Impeccable** marca dos cosas que se dejaron **a propósito**: el fondo crema (identidad de la app) y la sombra "mecánica" de los botones (`btn-cta`).
 - **No probado en un celular real:** todo lo del punto 3.2.
 
