@@ -1,5 +1,5 @@
 // src/components/ui/SelectCard.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { CheckCircle2, Circle } from "lucide-react";
 
 export function SelectCard({ active, onClick, text, compact, icon }) {

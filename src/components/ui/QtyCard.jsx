@@ -1,5 +1,5 @@
 // src/components/ui/QtyCard.jsx
-import React, { useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 
 // Tarjeta de cantidad: botones - y + para elegir cuántas unidades de un plato.
@@ -31,7 +31,7 @@ export function QtyCard({ text, qty, onChange, priceTag }) {
     >
       <div className="flex flex-col">
         <span className={`text-[14px] ${active ? "font-semibold text-[#2B2622]" : "text-[#5c5246]"}`}>{text}</span>
-        {priceTag && <span className="text-[12px] text-[#9C7A3C] font-medium">{priceTag}</span>}
+        {priceTag && <span className="text-[12px] text-[#86672E] font-medium">{priceTag}</span>}
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <button

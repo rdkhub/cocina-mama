@@ -60,6 +60,27 @@ export async function updateOrder(id, patch) {
   return true;
 }
 
+// Corregir un pedido ya guardado (desde el Cuaderno). El total lo vuelve a
+// calcular la base de datos (trigger orders_revalidar_pedido).
+export async function updateOrderContenido(id, order) {
+  const row = {
+    nombre: order.nombre,
+    telefono: order.telefono,
+    fondos: order.fondos,
+    entradas: order.entradas,
+    adicionales: order.adicionales ?? [],
+    modo: order.modo,
+    direccion: order.direccion,
+    pago: order.pago,
+    notas: order.notas,
+    mensaje_original: order.mensajeOriginal || "",
+  };
+  if ("pagado" in order) row.pagado = order.pagado;
+  const { error } = await supabase.from("orders").update(row).eq("id", id);
+  if (error) throw error;
+  return true;
+}
+
 export async function deleteOrder(id) {
   const { error } = await supabase.from("orders").delete().eq("id", id);
   if (error) throw error;

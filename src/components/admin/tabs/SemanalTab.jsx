@@ -1,5 +1,4 @@
 // src/components/admin/tabs/SemanalTab.jsx
-import React from "react";
 
 export function SemanalTab({ resumenSemanal, todayKey }) {
   return (
@@ -22,7 +21,7 @@ export function SemanalTab({ resumenSemanal, todayKey }) {
           <div className="text-[#C1452D] text-xl font-semibold" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
             S/ {resumenSemanal.totalDeudaSemana.toFixed(2)}
           </div>
-          <div className="text-[#998C76] text-[11px] mt-1">de esta semana</div>
+          <div className="text-[#7D6F58] text-[11px] mt-1">de esta semana</div>
         </div>
       </div>
 
@@ -35,7 +34,7 @@ export function SemanalTab({ resumenSemanal, todayKey }) {
               <div key={d.nombre + d.telefono} className="flex items-center justify-between bg-[#FBF6EC] rounded-lg px-3 py-2">
                 <div>
                   <div className="text-[13px] text-[#2B2622] font-medium">{d.nombre}</div>
-                  <div className="text-[11px] text-[#998C76]">
+                  <div className="text-[11px] text-[#7D6F58]">
                     {d.telefono} &middot; {d.pedidos} pedido{d.pedidos > 1 ? "s" : ""}
                   </div>
                 </div>
@@ -76,7 +75,7 @@ export function SemanalTab({ resumenSemanal, todayKey }) {
       <div className="bg-white border border-[#eee2cb] rounded-2xl shadow-[0_2px_10px_rgba(43,38,34,0.05)] p-4">
         <div className="text-[#2B2622] text-[14px] font-medium mb-3">Platos más pedidos</div>
         {resumenSemanal.platosTop.length === 0 && (
-          <p className="text-[#998C76] text-[13px]">Todavía no hay pedidos esta semana.</p>
+          <p className="text-[#7D6F58] text-[13px]">Todavía no hay pedidos esta semana.</p>
         )}
         <div className="space-y-2.5">
           {resumenSemanal.platosTop.map((p, idx) => {
@@ -88,7 +87,7 @@ export function SemanalTab({ resumenSemanal, todayKey }) {
                   <span className="text-[#3a332b]">
                     {idx + 1}. {p.nombre}
                   </span>
-                  <span className="text-[#9C7A3C] font-medium">x{p.cantidad}</span>
+                  <span className="text-[#86672E] font-medium">x{p.cantidad}</span>
                 </div>
                 <div className="h-1.5 bg-[#FBF6EC] rounded-full overflow-hidden">
                   <div className="h-full bg-[#5C7A4F] rounded-full" style={{ width: `${anchoPct}%` }} />

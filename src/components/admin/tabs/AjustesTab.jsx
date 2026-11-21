@@ -1,6 +1,6 @@
 // src/components/admin/tabs/AjustesTab.jsx
 // Notificaciones push y plantilla del mensaje de WhatsApp.
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Bell, BellRing, BellOff, Send, Loader2, Smartphone, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Field, inputStyle } from "../../ui";
 import { estadoNotificaciones, activarNotificaciones, desactivarNotificaciones, enviarPrueba, esIOS, estaInstalada } from "../../../lib/push";
@@ -18,10 +18,14 @@ export function AjustesTab({ ajustes, onGuardarAjustes, showToast }) {
   useEffect(() => {
     estadoNotificaciones().then(setEstado);
   }, []);
-  useEffect(() => {
+  // Si los ajustes cambian (por ejemplo, desde otro celular), se recargan
+  // las plantillas. Se hace durante el render, como recomienda React.
+  const [ajustesVistos, setAjustesVistos] = useState(ajustes);
+  if (ajustes !== ajustesVistos) {
+    setAjustesVistos(ajustes);
     setSaludo(ajustes.plantillaSaludo || SALUDO_POR_DEFECTO);
     setCierre(ajustes.plantillaCierre ?? CIERRE_POR_DEFECTO);
-  }, [ajustes]);
+  }
 
   const activar = async () => {
     setCargando(true);

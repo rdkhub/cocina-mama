@@ -1,6 +1,21 @@
 // src/components/admin/AdminView.jsx
-import React, { useState, useEffect, useMemo } from "react";
-import { Lock, ArrowLeft } from "lucide-react";
+import { useState, useMemo } from "react";
+import { m } from "motion/react";
+import {
+  Lock,
+  ArrowLeft,
+  NotebookPen,
+  ClipboardList,
+  UtensilsCrossed,
+  Wallet,
+  ChefHat,
+  History,
+  BarChart3,
+  Settings,
+  MoreHorizontal,
+} from "lucide-react";
+import { vibrar } from "../ui";
+import { Sheet } from "../ui/Sheet";
 import { useApp } from "../../context/AppContext";
 import { todayKey } from "../../data";
 import {
@@ -18,8 +33,10 @@ import {
   copiarMenu,
   sincronizarMenuViejo,
   guardarAjustes,
+  ordenarItems,
 } from "../../lib/catalogo";
 import { PedidosTab } from "./tabs/PedidosTab";
+import { CuadernoTab } from "./tabs/CuadernoTab";
 import { MenuTab } from "./tabs/MenuTab";
 import { PlatosTab } from "./tabs/PlatosTab";
 import { DeudasTab } from "./tabs/DeudasTab";
@@ -52,32 +69,41 @@ export function AdminView({ onBack }) {
     handleOrderUpdate,
     handleOrderDelete,
     crearPedidoAdmin,
+    editarPedidoAdmin,
     mensajeCompartido,
     setMensajeCompartido,
   } = useApp();
 
 
-  const [tab, setTab] = useState("pedidos"); // pedidos | menu | platos | deudas | historial | semanal | ajustes
+  const [masAbierto, setMasAbierto] = useState(false);
+  // cuaderno | pedidos | menu | platos | deudas | historial | semanal | ajustes
+  const [tab, setTab] = useState(() => (pedidoResaltado || mensajeCompartido ? "pedidos" : "cuaderno"));
   // Nuevo pedido de WhatsApp: se abre solo cuando el papá comparte un mensaje.
-  const [nuevoPedido, setNuevoPedido] = useState({ open: false, texto: "" });
-  useEffect(() => {
-    if (!mensajeCompartido) return;
+  const [nuevoPedido, setNuevoPedido] = useState(() => ({ open: !!mensajeCompartido, texto: mensajeCompartido || "" }));
+  // Mensaje compartido o notificación que llega con el panel ya abierto: se
+  // atiende durante el render (patrón recomendado por React, sin efectos).
+  const [compartidoVisto, setCompartidoVisto] = useState(mensajeCompartido);
+  if (mensajeCompartido && mensajeCompartido !== compartidoVisto) {
+    setCompartidoVisto(mensajeCompartido);
     setTab("pedidos");
     setNuevoPedido({ open: true, texto: mensajeCompartido });
+  }
+  const [resaltadoVisto, setResaltadoVisto] = useState(pedidoResaltado);
+  if (pedidoResaltado && pedidoResaltado !== resaltadoVisto) {
+    setResaltadoVisto(pedidoResaltado);
+    setTab("pedidos");
+  }
+  const cerrarNuevoPedido = () => {
+    setNuevoPedido({ open: false, texto: "" });
     setMensajeCompartido("");
-  }, [mensajeCompartido, setMensajeCompartido]);
+    setCompartidoVisto("");
+  };
   const [fechaHistorial, setFechaHistorial] = useState(todayKey());
   const [modoHistorial, setModoHistorial] = useState("fecha");
   const [busquedaCliente, setBusquedaCliente] = useState("");
   const [diasAnteriores, setDiasAnteriores] = useState([]);
   const [cargandoDiasAnteriores, setCargandoDiasAnteriores] = useState(false);
   const [guardandoPrecios, setGuardandoPrecios] = useState(false);
-
-  // Si llega abriendo un pedido puntual (desde una notificación), entra
-  // directo a la pestaña de pedidos.
-  useEffect(() => {
-    if (pedidoResaltado) setTab("pedidos");
-  }, [pedidoResaltado]);
 
   const platosPorId = useMemo(() => new Map(platos.map((p) => [p.id, p])), [platos]);
 
@@ -162,6 +188,21 @@ export function AdminView({ onBack }) {
     } catch (e) {
       console.error(e);
       showToast("No se pudo guardar la proteína.");
+      refreshMenuDia(fechaHoy);
+    }
+  };
+
+  // Nuevo orden del menú (arrastrando en la pestaña Menú).
+  const handleReordenar = async (ids) => {
+    const pos = new Map(ids.map((id, i) => [id, i]));
+    setMenuDia((prev) => ({ ...prev, items: prev.items.map((it) => (pos.has(it.id) ? { ...it, orden: pos.get(it.id) } : it)) }));
+    try {
+      await ordenarItems(ids);
+      const fresco = await cargarMenuDia(fechaHoy);
+      sincronizar(fresco.dia, fresco.items);
+    } catch (e) {
+      console.error(e);
+      showToast("No se pudo guardar el orden.");
       refreshMenuDia(fechaHoy);
     }
   };
@@ -347,15 +388,25 @@ export function AdminView({ onBack }) {
     return { dias, totalSemana, totalDeudaSemana, platosTop, listaDeudores, totalPedidos: ordersSemana.length, maxDia };
   })();
 
+  // Las 4 primeras van en la barra de abajo del celular; el resto, en "Más".
   const TABS = [
-    { id: "pedidos", label: `Hoy (${todaysOrders.length})` },
-    { id: "menu", label: "Menú" },
-    { id: "platos", label: "Platos" },
-    { id: "deudas", label: `Deben (${deudaList.length})` },
-    { id: "historial", label: "Historial" },
-    { id: "semanal", label: "Semanal" },
-    { id: "ajustes", label: "Ajustes" },
+    { id: "cuaderno", label: "Cuaderno", Icono: NotebookPen },
+    { id: "pedidos", label: "Hoy", Icono: ClipboardList, cuenta: todaysOrders.length },
+    { id: "menu", label: "Menú", Icono: UtensilsCrossed },
+    { id: "deudas", label: "Deben", Icono: Wallet, cuenta: deudaList.length, alerta: true },
+    { id: "platos", label: "Platos", Icono: ChefHat },
+    { id: "historial", label: "Historial", Icono: History },
+    { id: "semanal", label: "Semanal", Icono: BarChart3 },
+    { id: "ajustes", label: "Ajustes", Icono: Settings },
   ];
+  const PRINCIPALES = TABS.slice(0, 4);
+  const EN_MAS = TABS.slice(4);
+  const irATab = (id) => {
+    vibrar();
+    setTab(id);
+    setMasAbierto(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen bg-crema">
@@ -372,25 +423,42 @@ export function AdminView({ onBack }) {
       </header>
 
       <div className="max-w-5xl mx-auto px-5 md:flex md:gap-6 md:items-start">
-        <nav
-          aria-label="Secciones del panel"
-          className="flex gap-1 -mt-px bg-white rounded-xl border border-[#eee2cb] p-1 mt-4 mb-5 overflow-x-auto md:flex-col md:w-48 md:shrink-0 md:mb-0 md:sticky md:top-4 md:overflow-visible"
-        >
-          {TABS.map((t) => (
+        {/* Pantallas grandes (tablet acostada, computadora): menú al costado */}
+        <nav aria-label="Secciones del panel" className="hidden md:flex flex-col gap-1 bg-white rounded-2xl border border-[#eee2cb] shadow-card p-1.5 mt-4 w-52 shrink-0 sticky top-4">
+          {TABS.map(({ id, label, Icono, cuenta, alerta }) => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              aria-current={tab === t.id ? "page" : undefined}
-              className={`flex-1 md:flex-none md:w-full text-center md:text-left text-[13px] md:text-[14px] py-2 md:py-2.5 md:px-3 rounded-lg font-medium transition whitespace-nowrap ${
-                tab === t.id ? "bg-tinta text-white" : "text-texto-secundario hover:bg-crema"
+              key={id}
+              onClick={() => irATab(id)}
+              aria-current={tab === id ? "page" : undefined}
+              className={`w-full flex items-center gap-2.5 text-left text-[14.5px] py-2.5 px-3 rounded-xl font-medium transition ${
+                tab === id ? "bg-tinta text-white shadow-card" : "text-texto-secundario hover:bg-crema"
               }`}
             >
-              {t.label}
+              <Icono size={18} />
+              {label}
+              {cuenta > 0 && (
+                <span className={`ml-auto text-[11.5px] font-bold rounded-full px-2 py-0.5 ${alerta ? "bg-terracota text-white" : tab === id ? "bg-white/15" : "bg-crema"}`}>
+                  {cuenta}
+                </span>
+              )}
             </button>
           ))}
         </nav>
 
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex-1 pt-4 pb-28 md:pb-10">
+          {tab === "cuaderno" && (
+            <CuadernoTab
+              todaysOrders={todaysOrders}
+              orders={orders}
+              menuHoy={menuHoy}
+              platos={platos}
+              onCrear={crearPedidoAdmin}
+              onEditar={editarPedidoAdmin}
+              onOrderUpdate={handleOrderUpdate}
+              onOrderDelete={handleOrderDelete}
+            />
+          )}
+
           {tab === "pedidos" && (
             <PedidosTab
               onNuevoPedido={() => setNuevoPedido({ open: true, texto: "" })}
@@ -420,6 +488,7 @@ export function AdminView({ onBack }) {
                 onToggleAgotado={handleToggleAgotado}
                 onGuardarPrecios={handleGuardarPrecios}
                 onPrecioExtra={handlePrecioExtra}
+                onReordenar={handleReordenar}
                 guardandoPrecios={guardandoPrecios}
               />
               <CompartirMenu menuHoy={menuHoy} ajustes={ajustes} showToast={showToast} />
@@ -463,10 +532,63 @@ export function AdminView({ onBack }) {
           {tab === "ajustes" && <AjustesTab ajustes={ajustes} onGuardarAjustes={handleGuardarAjustes} showToast={showToast} />}
         </main>
       </div>
+
+      {/* Celular: barra de pestañas abajo, al alcance del pulgar */}
+      <nav
+        aria-label="Secciones del panel"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-[#eee2cb] shadow-barra pb-[env(safe-area-inset-bottom)]"
+      >
+        <div className="grid grid-cols-5 max-w-md mx-auto">
+          {[...PRINCIPALES, { id: "mas", label: "Más", Icono: MoreHorizontal }].map(({ id, label, Icono, cuenta, alerta }) => {
+            const activo = id === "mas" ? EN_MAS.some((t) => t.id === tab) : tab === id;
+            return (
+              <m.button
+                key={id}
+                whileTap={{ scale: 0.88 }}
+                onClick={() => (id === "mas" ? (vibrar(), setMasAbierto(true)) : irATab(id))}
+                aria-current={activo ? "page" : undefined}
+                className="relative flex flex-col items-center gap-0.5 pt-2 pb-2.5 text-[11.5px] font-medium"
+              >
+                {activo && <m.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} className="absolute top-0 h-[3px] w-10 rounded-b-full bg-terracota" />}
+                <span className={`relative w-12 h-8 rounded-full flex items-center justify-center transition-colors ${activo ? "bg-terracota/10 text-terracota" : "text-texto-terciario"}`}>
+                  <Icono size={21} strokeWidth={activo ? 2.4 : 2} />
+                  {cuenta > 0 && (
+                    <span className={`absolute -top-1 right-0 min-w-[18px] h-[18px] px-1 rounded-full text-[10.5px] font-bold flex items-center justify-center ${alerta ? "bg-terracota text-white" : "bg-tinta text-white"}`}>
+                      {cuenta}
+                    </span>
+                  )}
+                </span>
+                <span className={activo ? "text-terracota font-semibold" : "text-texto-secundario"}>{label}</span>
+              </m.button>
+            );
+          })}
+        </div>
+      </nav>
+
+      <Sheet open={masAbierto} onClose={() => setMasAbierto(false)} title="Más">
+        <div className="grid grid-cols-2 gap-2.5">
+          {EN_MAS.map(({ id, label, Icono }) => (
+            <m.button
+              key={id}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => irATab(id)}
+              className={`flex flex-col items-start gap-2 rounded-2xl p-4 border-2 text-left transition ${
+                tab === id ? "border-terracota bg-terracota-suave" : "border-transparent bg-white shadow-card"
+              }`}
+            >
+              <span className="w-10 h-10 rounded-xl bg-crema flex items-center justify-center text-terracota">
+                <Icono size={20} />
+              </span>
+              <span className="text-[15px] font-semibold text-tinta">{label}</span>
+            </m.button>
+          ))}
+        </div>
+      </Sheet>
+
       <NuevoPedidoSheet
         open={nuevoPedido.open}
         textoInicial={nuevoPedido.texto}
-        onClose={() => setNuevoPedido({ open: false, texto: "" })}
+        onClose={cerrarNuevoPedido}
         menuHoy={menuHoy}
         platos={platos}
         orders={orders}

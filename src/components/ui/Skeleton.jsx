@@ -1,5 +1,4 @@
 // src/components/ui/Skeleton.jsx
-import React from "react";
 
 // Pantalla de carga que imita la forma del menú en vez de un spinner
 // genérico. Se siente más rápida aunque tarde lo mismo, porque el ojo ya
