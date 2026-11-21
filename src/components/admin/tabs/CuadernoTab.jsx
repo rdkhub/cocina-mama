@@ -8,7 +8,7 @@
 // Deben, Historial y Semanal, y todos los celulares lo ven al instante.
 // Cualquier pedido de hoy (de la página, de WhatsApp o a mano) se puede corregir.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NotebookPen, Plus, Minus, Loader2, Trash2, Store, MapPin, CheckCircle2, Circle, Wallet, X, Keyboard, Pencil } from "lucide-react";
+import { NotebookPen, Plus, Minus, Loader2, Trash2, Store, MapPin, House, CheckCircle2, Circle, Wallet, X, Keyboard, Pencil } from "lucide-react";
 import { ConfirmDialog, EmptyState, inputStyle } from "../../ui";
 import { contextoDelMenu } from "../../../lib/leerPedido";
 import {
@@ -23,7 +23,7 @@ import {
   textoLinea,
   precioLinea,
 } from "../../../lib/cuaderno";
-import { PAY_COLORS, soles } from "../../../utils/pedidos";
+import { PAY_COLORS, MODO_LABELS, precioMenuDe, soles } from "../../../utils/pedidos";
 
 const PAGOS = [
   { id: "yape", label: "Yape" },
@@ -550,6 +550,9 @@ export function CuadernoTab({ todaysOrders, orders, menuHoy, platos, onCrear, on
             <Chip activo={fila.modo === "delivery"} onClick={() => set({ modo: "delivery" })}>
               <MapPin size={13} className="inline -mt-0.5" /> Delivery
             </Chip>
+            <Chip activo={fila.modo === "casa"} onClick={() => set({ modo: "casa" })}>
+              <House size={13} className="inline -mt-0.5" /> En casa
+            </Chip>
             <span className="w-px bg-divisor mx-0.5" />
             {PAGOS.map((p) => (
               <Chip key={p.id} activo={fila.pago === p.id} onClick={() => set({ pago: p.id })}>
@@ -557,6 +560,10 @@ export function CuadernoTab({ todaysOrders, orders, menuHoy, platos, onCrear, on
               </Chip>
             ))}
           </div>
+
+          {fila.modo === "casa" && dia && (
+            <p className="text-[12.5px] text-texto-secundario -mt-1">Come aquí: {soles(precioMenuDe(dia, "casa"))} por menú. La entrada extra y los adicionales cuestan igual.</p>
+          )}
 
           {fila.modo === "delivery" && (
             <input className={inputStyle} value={direccion} onChange={(e) => set({ direccion: e.target.value })} placeholder="Dirección (opcional)" autoComplete="off" />
@@ -606,7 +613,7 @@ export function CuadernoTab({ todaysOrders, orders, menuHoy, platos, onCrear, on
                   <div className="pl-8 text-[13.5px] text-[#3a332b] leading-snug">{resumenPedido(o)}</div>
                   {o.notas && <div className="pl-8 text-[12.5px] text-ocre italic leading-snug">“{o.notas}”</div>}
                   <div className="pl-8 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px]">
-                    <span className="text-texto-secundario">{o.modo === "delivery" ? `Delivery${o.direccion ? `: ${o.direccion}` : ""}` : "Llevar"}</span>
+                    <span className="text-texto-secundario">{o.modo === "delivery" ? `Delivery${o.direccion ? `: ${o.direccion}` : ""}` : MODO_LABELS[o.modo] || "Llevar"}</span>
                     {o.pago !== "fiado" && (
                       <span style={{ color: PAY_COLORS[o.pago] }} className="font-medium">
                         {PAGOS.find((p) => p.id === o.pago)?.label}

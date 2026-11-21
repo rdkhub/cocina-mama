@@ -186,6 +186,11 @@ describe("precioLinea", () => {
     expect(precioLinea({ cantidad: 3 }, DIA, "delivery")).toBe(39);
   });
 
+  it("cobra en casa con su precio (S/ 11 si el día no lo trae)", () => {
+    expect(precioLinea({ cantidad: 2 }, DIA, "casa")).toBe(22);
+    expect(precioLinea({ cantidad: 2 }, { ...DIA, precioCasa: 10 }, "casa")).toBe(20);
+  });
+
   it("devuelve 0 si no hay día", () => {
     expect(precioLinea({ cantidad: 3 }, null)).toBe(0);
   });

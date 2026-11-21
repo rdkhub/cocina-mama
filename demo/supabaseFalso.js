@@ -48,7 +48,7 @@ const db = {
   ],
   ajustes: [{ id: 1, plantilla_saludo: "", plantilla_cierre: "" }],
   menu: [],
-  menu_dia: [{ fecha: hoy, precio_recojo: 12, precio_delivery: 13, precio_entrada_extra: 3, refresco: "Maracuyá", nota: "" }],
+  menu_dia: [{ fecha: hoy, precio_recojo: 12, precio_delivery: 13, precio_entrada_extra: 3, precio_casa: 11, refresco: "Maracuyá", nota: "" }],
   menu_dia_items: [
     { id: "i-1", fecha: hoy, plato_id: "p-aji", proteinas: [], agotado: false, orden: 0 },
     { id: "i-2", fecha: hoy, plato_id: "p-frejol", proteinas: ["Chuleta", "Pollo a la plancha"], agotado: false, orden: 1 },
@@ -109,7 +109,7 @@ function validar(row, esNuevo) {
   const incluidas = suma((row.fondos || []).filter((f) => f.entradaIncluida));
   row.adicionales = (row.adicionales || []).map((a) => ({ ...a, precio: db.platos.find((p) => p.id === a.platoId)?.precio_extra || 0 }));
   row.total =
-    menus * (row.modo === "delivery" ? dia.precio_delivery : dia.precio_recojo) +
+    menus * (row.modo === "delivery" ? dia.precio_delivery : row.modo === "casa" ? dia.precio_casa ?? 11 : dia.precio_recojo) +
     Math.max(0, suma(row.entradas) - incluidas) * dia.precio_entrada_extra +
     row.adicionales.reduce((a, x) => a + x.cantidad * x.precio, 0);
   if (row.total <= 0) return { message: "PEDIDO_INVALIDO" };
@@ -135,6 +135,32 @@ function validar(row, esNuevo) {
   validar(o, true);
   db.orders.push(o);
 });
+
+// Deudas de días anteriores (para ver "Deben" por semana). El total va puesto
+// a mano porque esos días no tienen menú en el demo.
+const haceDias = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+[
+  [2, "Don Lucho", 1, 12],
+  [3, "Señora Bania", 2, 22, "casa"],
+  [4, "Don Lucho", 2, 24],
+  [9, "Señora Bania", 1, 11, "casa"],
+  [10, "Rosa", 1, 13, "delivery"],
+].forEach(([dias, nombre, n, total, modo = "recojo"]) =>
+  db.orders.push(
+    pedido(60 * 24 * dias, nombre, [{ platoId: "p-aji", nombre: "Ají de gallina", cantidad: n, arroz: "con" }], [], {
+      fecha: haceDias(dias),
+      modo,
+      pago: "fiado",
+      pagado: false,
+      listo: true,
+      total,
+    })
+  )
+);
 
 // ---------- Realtime de mentira ----------
 const oyentes = [];

@@ -245,6 +245,7 @@ export function AdminView({ onBack }) {
         precioRecojo: Number(valores.precioRecojo) || 0,
         precioDelivery: Number(valores.precioDelivery) || 0,
         precioEntradaExtra: Number(valores.precioEntradaExtra) || 0,
+        precioCasa: Number(valores.precioCasa) || 0,
         refresco: valores.refresco || "",
       });
       const fresco = await cargarMenuDia(fechaHoy);

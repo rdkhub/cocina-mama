@@ -120,7 +120,7 @@ export function ResumenCocina({ orders }) {
             </Grupo>
           )}
           <p className="text-[13px] text-texto-secundario">
-            {c.pedidos} pedidos · {c.llevar} para llevar · {c.delivery} delivery
+            {c.pedidos} pedidos · {c.llevar} para llevar · {c.delivery} delivery{c.casa > 0 && ` · ${c.casa} en casa`}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={mandar} className="btn-cta-salvia flex items-center justify-center gap-2 rounded-2xl bg-salvia text-white font-semibold text-[14.5px] py-3">
