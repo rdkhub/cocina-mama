@@ -1,92 +1,58 @@
-# Cocina de Mamá — Sistema de pedidos del menú diario
+# Cocina de Mamá
 
-App web para que los clientes vean el menú del día y hagan su pedido, y un panel
-para administrar pedidos, editar el menú y controlar quién debe.
+App web de pedidos del menú diario de un negocio familiar en La Molina (Lima). Los clientes ven el menú del día y piden; el panel (mamá/papá, en celular o tablet) maneja Cuaderno, pedidos de Hoy, Menú, quién Debe, Historial y Semanal.
 
-## Paso 1 — Crear las tablas en Supabase
+## Stack
 
-1. Entra a [supabase.com](https://supabase.com) → tu proyecto (o crea uno nuevo, es gratis).
-2. Ve a **SQL Editor** (en el menú lateral) → **New query**.
-3. Abre el archivo `supabase_setup.sql` de esta carpeta, copia todo su contenido, pégalo ahí y dale **Run**.
-4. Esto crea las tablas `menu` y `orders`, deja un menú de ejemplo cargado, y activa Realtime
-   (para que los pedidos aparezcan al instante en el panel sin recargar la página).
+React 19 + Vite 8 + Tailwind 3 (JavaScript, sin TypeScript).
 
-## Paso 2 — Obtener tus claves de Supabase
+Supabase: Postgres con RLS, Realtime, Storage (fotos de platos), Auth, Edge Functions y Web Push.
 
-1. En Supabase, ve a **Project Settings** (ícono de engranaje) → **API**.
-2. Copia:
-   - **Project URL** → la vas a usar como `VITE_SUPABASE_URL`
-   - **anon public key** → la vas a usar como `VITE_SUPABASE_ANON_KEY`
+Deploy en Vercel.
 
-(Estas dos son seguras para usar en el frontend, están pensadas para eso.)
-
-## Paso 3 — Probar localmente (opcional)
+## Correrlo en tu computadora
 
 ```bash
 npm install
-cp .env.example .env.local
-# Edita .env.local y pega tus claves de Supabase
-npm run dev
+npm run demo     # http://localhost:5180 con datos inventados, no toca la base real
+npm run dev      # http://localhost:5173, necesita .env.local
+npm test
+npm run lint
+npm run build
 ```
 
-Abre `http://localhost:5173` en el navegador.
+Para `npm run dev` crea a mano un archivo `.env.local` (no hay `.env.example`) con dos líneas:
 
-## Paso 4 — Subir a GitHub
-
-```bash
-git init
-git add .
-git commit -m "Cocina de Mamá - sistema de pedidos"
+```
+VITE_SUPABASE_URL=https://TU-PROYECTO.supabase.co
+VITE_SUPABASE_ANON_KEY=tu-clave-anon
 ```
 
-Crea un repositorio nuevo en GitHub (puede ser privado) y luego:
+Ese archivo nunca se sube a GitHub: ya está en `.gitignore`.
 
-```bash
-git remote add origin https://github.com/TU-USUARIO/cocina-mama.git
-git branch -M main
-git push -u origin main
-```
+## Base de datos
 
-## Paso 5 — Desplegar en Vercel
+- El esquema está en `supabase/migrations/` (se aplican en orden por fecha). El archivo `supabase_setup.sql` es la versión inicial antigua y ya no es la referencia.
+- El total de cada pedido lo calcula la base de datos (función `validar_pedido`). La pantalla solo muestra una estimación.
+- Edge Functions en `supabase/functions/`: `leer-pedido` (lee un mensaje de pedido con IA, solo para el admin) y `notificar-pedido` (aviso push cuando entra un pedido).
 
-1. Entra a [vercel.com](https://vercel.com) → **Add New** → **Project**.
-2. Importa el repositorio que acabas de subir a GitHub.
-3. En **Environment Variables**, agrega las dos variables del Paso 2:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-4. Click en **Deploy**.
-5. En 1-2 minutos, Vercel te da una URL pública (algo como `cocina-mama.vercel.app`).
+## Panel de administración
 
-Esa URL es la que compartes por WhatsApp a tus clientes — ya es un link real que se
-puede pegar y abrir directo, no código.
+- Se entra tocando el candado arriba a la derecha de la página.
+- El PIN es la contraseña de un usuario de Supabase Auth (de 6 a 8 dígitos). Se verifica en el servidor; no hay ningún PIN escrito en el código.
+- Solo los correos de la tabla `admins` cuentan como administradores (función `es_admin`). Para cambiar el PIN, cambia la contraseña de ese usuario en Supabase → Authentication → Users.
 
-## Paso 6 — Usar en la tablet del local
+## Deploy
 
-- Abre esa misma URL en la tablet.
-- Toca el candado (esquina inferior derecha) para entrar al panel con el PIN.
-- El PIN por defecto es `1234` — cámbialo en `src/App.jsx`, busca la línea:
-  ```js
-  const ADMIN_PIN = "1234";
-  ```
-  y reemplázalo por el que quieras usar en el local. Luego vuelve a subir el cambio
-  a GitHub (`git add .`, `git commit -m "cambio de pin"`, `git push`) y Vercel
-  lo actualiza solo.
+- Vercel despliega solo al hacer push a `main`. Variables en Vercel: `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
+- `main` está en producción: se trabaja en una rama con Pull Request. Antes de subir, `npm run lint`, `npm test` y `npm run build` deben pasar.
+- La vista previa de Vercel de cada PR usa la base de datos REAL: los pedidos de prueba llevan «prueba» en el nombre.
 
-## Actualizar el menú cada día
+## WhatsApp
 
-Desde el panel (candado → PIN → pestaña "Editar menú"), cambias los 2 platos de
-fondo, las 3 entradas y la bebida. En cuanto guardas, **todos los que abran la
-página ven el nuevo menú al instante** — no hace falta avisar nada por WhatsApp
-de nuevo, el link de siempre ya muestra el menú actualizado.
+- El link de la página se comparte por WhatsApp. No hay envío ni lectura automática de WhatsApp (no hay API oficial sin RUC).
+- Los pedidos que llegan por WhatsApp se anotan en la pestaña Cuaderno.
 
-## Notas importantes
+## Más información
 
-- **No hay envío automático de mensajes por WhatsApp.** Eso requiere la API
-  oficial de WhatsApp Business (de pago, con aprobación de Meta). El flujo
-  aquí es: tú compartes el link una vez (puede quedar fijado en tu grupo de
-  WhatsApp), y los clientes lo abren cuando quieran ver el menú del día.
-- **El PIN del panel es solo una traba visual**, no seguridad real a nivel de
-  base de datos (cualquiera con las claves de Supabase técnicamente podría
-  escribir directo). Para un negocio familiar chico esto es razonable. Si en
-  el futuro quieres seguridad más fuerte (login real para tu mamá), se puede
-  agregar Supabase Auth.
+Detalles para desarrolladores en `CLAUDE.md`; estado y próximos pasos en `PENDIENTES.md`.
