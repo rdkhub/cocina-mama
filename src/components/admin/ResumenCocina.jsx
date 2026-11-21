@@ -21,7 +21,9 @@ function Grupo({ titulo, children }) {
 }
 
 export function ResumenCocina({ orders }) {
-  const [soloFalta, setSoloFalta] = useState(false);
+  // Por defecto cuenta solo lo que falta servir: al marcar un pedido como
+  // listo, sus platos se descuentan de aquí.
+  const [soloFalta, setSoloFalta] = useState(true);
   const [copiado, setCopiado] = useState(false);
   const reales = orders.filter((o) => !o.nombre.toLowerCase().includes("prueba"));
   const lista = soloFalta ? reales.filter((o) => !o.listo) : reales;
@@ -56,8 +58,8 @@ export function ResumenCocina({ orders }) {
 
       <div className="grid grid-cols-2 gap-1 bg-crema rounded-full p-1 mb-4" role="tablist" aria-label="Qué contar">
         {[
-          [false, "Todo el día"],
           [true, "Falta servir"],
+          [false, "Todo el día"],
         ].map(([v, t]) => (
           <button
             key={t}

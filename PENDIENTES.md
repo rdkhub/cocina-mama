@@ -6,18 +6,28 @@
 
 ## 1. Dónde estamos
 
-- **En producción** (`main`, desplegado en Vercel): PR #9 a #15 fusionados. Último commit en `main`: `791badf` (merge del PR #15).
+- **En producción** (`main`, desplegado en Vercel): PR #9 a #17 fusionados. Último commit en `main`: `0aff229` (merge del PR #17).
 - **PR abiertos:**
-  - **#16 `fix/movil-toques`**: botones más fáciles de tocar en celular y textos que no se cortan. Esperando tu OK.
-  - **#17 `docs/readme-pendientes`**: README reescrito y este PENDIENTES.md al día. Esperando tu OK.
+  - **`feature/cuaderno-editar-adicionales`**: corregir cualquier pedido, armar platos sin juntarlos, notas, adicionales fijos, listos abajo en Hoy y "Para la cocina" que descuenta lo listo. **Trae una migración que falta aplicar en Supabase** (`20261121120000_adicionales_fijos.sql`). Ver la sección "Sesión del 21-nov (tarde)".
   - **#8 `feature/foto-cuaderno`** (20-oct): leer con IA una foto de la hoja del cuaderno. **Tiene conflictos con `main`.** Falta tu decisión (ver el paso 5 de la sección 3).
 - **Ramas viejas sin borrar** (no se borran sin tu permiso): `docs/claude-md` y `fix/numeracion-pasos`, ya fusionadas.
 - **Proyecto "lector automático de WhatsApp" (fase B): DESCARTADO por ahora.** No hay forma oficial y gratis sin RUC (ver la sección 2.1). La fase 1 (compartir mensajes a la app y leerlos con IA o con el lector local) sigue funcionando.
 
 ### Sesión del 21-nov
 - **PR #15 (fusionado):** la numeración de pasos saltaba del 2 al 4 cuando había entrada extra pero no extras. Ahora el paso 3 y el número de "Tus datos" dependen de la misma condición (`hayPasoExtras` en `ClientView.jsx`).
-- **PR #16 (abierto):** candado, WhatsApp de arriba y "Copiar" con área de toque de 44 px o más (un `::after` invisible, se ven igual); la fecha y el menú de la tarjeta de precios ya no se parten a la mitad; el aviso de horario de Encuéntranos entra en una línea.
-- **PR #17 (abierto):** README reescrito por OpenCode y revisado (ya no habla de `ADMIN_PIN` ni de `.env.example`).
+- **PR #16 (fusionado):** candado, WhatsApp de arriba y "Copiar" con área de toque de 44 px o más (un `::after` invisible, se ven igual); la fecha y el menú de la tarjeta de precios ya no se parten a la mitad; el aviso de horario de Encuéntranos entra en una línea.
+- **PR #17 (fusionado):** README reescrito por OpenCode y revisado (ya no habla de `ADMIN_PIN` ni de `.env.example`).
+
+### Sesión del 21-nov (tarde): Cuaderno más claro para el papá
+Pedido de Rodrigo (urgente: corregir pedidos).
+- **Corregir cualquier pedido de hoy**, de la página, de WhatsApp o a mano: se toca en la lista del Cuaderno o con el botón **"Corregir"** de cada tarjeta en Hoy. Antes los de la página no se podían tocar.
+- **Arreglos al corregir:** ya no se borran las notas, el teléfono ni el mensaje original de WhatsApp; y un plato o entrada que se agotó después ya no desaparece del pedido (el Cuaderno usa el menú con lo agotado: `contextoDelMenu(..., { conAgotados: true })`).
+- **Armar un plato a la vez:** se toca el plato, se elige cuántos, entrada, proteína y arroz, y **"Agregar al pedido"**. Queda en "Este pedido lleva" con su detalle ("2 × Lomo · con sopa") y su precio, con lápiz para cambiarlo y tacho para quitarlo. Otro igual pero distinto se arma aparte. Se quitó "Separar uno" y "+ Otro diferente".
+- **Notas** en el Cuaderno (otro plato que no está, "sin cebolla"…). Se ven en la lista y en Hoy.
+- **Adicionales fijos:** platos de categoría **Adicional**, activos y con precio (ej. presa extra S/ 6, plancha extra, bistec extra, huevo sancochado) salen siempre en el Cuaderno, aunque no estén en el menú del día. **Hay que crearlos en Platos** (en producción hoy solo existe "Alitas", con precio 0, que no sale).
+- **Hoy:** los pendientes arriba ("faltan N") y los listos abajo, en "Listos". **"Para la cocina" empieza en "Falta servir"**: al marcar listo, sus platos se descuentan.
+- Migración `20261121120000_adicionales_fijos.sql`: `validar_pedido` acepta esos adicionales sin estar en el menú del día. Producción coincidía con el repo antes de escribirla.
+- 15 tests nuevos (`src/lib/__tests__/cuadernoLineas.test.js`, escritos por OpenCode y revisados). **Total: 72.**
 - **PR #8 revisado:** tiene conflictos (toca `AdminView`, `PedidosTab`, `AppContext`, `leerPedido`). Su función `leer-cuaderno` **ya está desplegada en Supabase** aunque el código no está en `main`; solo la puede usar el admin (`es_admin`), así que no hay riesgo de gasto por terceros.
 
 ---
@@ -104,7 +114,7 @@
 
 ## 3. Próximos pasos (en orden)
 
-1. **Merge de los PR #16 y #17**, con tu OK.
+1. **Cuaderno nuevo:** aplicar la migración `20261121120000_adicionales_fijos.sql` en Supabase, merge del PR con tu OK, y crear en Platos los adicionales (categoría Adicional, con precio).
 2. **Probar en un celular real** lo que no se pudo probar aquí:
    - intro y Mamá en movimiento;
    - vibración;

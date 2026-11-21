@@ -93,6 +93,12 @@ export function AdminView({ onBack }) {
     setResaltadoVisto(pedidoResaltado);
     setTab("pedidos");
   }
+  // "Corregir" desde Hoy: abre el Cuaderno con ese pedido cargado.
+  const [corregirId, setCorregirId] = useState(null);
+  const corregirEnCuaderno = (id) => {
+    setCorregirId(id);
+    setTab("cuaderno");
+  };
   const cerrarNuevoPedido = () => {
     setNuevoPedido({ open: false, texto: "" });
     setMensajeCompartido("");
@@ -456,6 +462,8 @@ export function AdminView({ onBack }) {
               onEditar={editarPedidoAdmin}
               onOrderUpdate={handleOrderUpdate}
               onOrderDelete={handleOrderDelete}
+              editarId={corregirId}
+              onEditarCargado={() => setCorregirId(null)}
             />
           )}
 
@@ -467,6 +475,7 @@ export function AdminView({ onBack }) {
               onOrderUpdate={handleOrderUpdate}
               onOrderDelete={handleOrderDelete}
               resaltadoId={pedidoResaltado}
+              onCorregir={corregirEnCuaderno}
             />
           )}
 
