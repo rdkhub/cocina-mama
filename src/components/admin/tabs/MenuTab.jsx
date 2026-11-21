@@ -175,6 +175,7 @@ function Precios({ dia, onGuardarPrecios, guardandoPrecios }) {
     precioRecojo: dia?.precioRecojo ?? "",
     precioDelivery: dia?.precioDelivery ?? "",
     precioEntradaExtra: dia?.precioEntradaExtra ?? "",
+    precioCasa: dia?.precioCasa ?? "",
     refresco: dia?.refresco ?? "",
   };
   const cambiar = (campo, valor) => setValores({ ...v, [campo]: valor });
@@ -199,6 +200,9 @@ function Precios({ dia, onGuardarPrecios, guardandoPrecios }) {
             <span>
               Entrada extra <b className="font-mono">{soles(dia?.precioEntradaExtra ?? 0)}</b>
             </span>
+            <span>
+              En casa <b className="font-mono">{soles(dia?.precioCasa ?? 0)}</b>
+            </span>
           </div>
           {dia?.refresco && <div className="text-[13px] text-texto-secundario mt-0.5">Refresco: {dia.refresco}</div>}
         </div>
@@ -210,7 +214,7 @@ function Precios({ dia, onGuardarPrecios, guardandoPrecios }) {
         {editando && (
           <m.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="px-4 pb-4 space-y-3 border-t border-divisor pt-3">
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Field label="Recojo">
                   <input type="number" min="0" step="0.5" inputMode="decimal" className={inputStyle} value={v.precioRecojo} onChange={(e) => cambiar("precioRecojo", e.target.value)} />
                 </Field>
@@ -219,6 +223,9 @@ function Precios({ dia, onGuardarPrecios, guardandoPrecios }) {
                 </Field>
                 <Field label="Entrada extra">
                   <input type="number" min="0" step="0.5" inputMode="decimal" className={inputStyle} value={v.precioEntradaExtra} onChange={(e) => cambiar("precioEntradaExtra", e.target.value)} />
+                </Field>
+                <Field label="En casa (come aquí)">
+                  <input type="number" min="0" step="0.5" inputMode="decimal" className={inputStyle} value={v.precioCasa} onChange={(e) => cambiar("precioCasa", e.target.value)} />
                 </Field>
               </div>
               <Field label="Refresco del día (incluido)">

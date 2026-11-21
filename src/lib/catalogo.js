@@ -17,7 +17,7 @@ export const CATEGORIAS_EXTRA = ["postre", "bebida", "adicional"];
 
 export const categoriaInfo = (id) => CATEGORIAS.find((c) => c.id === id) || CATEGORIAS[1];
 
-export const PRECIOS_POR_DEFECTO = { precioRecojo: 11, precioDelivery: 13, precioEntradaExtra: 3 };
+export const PRECIOS_POR_DEFECTO = { precioRecojo: 11, precioDelivery: 13, precioEntradaExtra: 3, precioCasa: 11 };
 
 // fotos_proteina llega como { "Chuleta": { url, path } }. Se limpia por si
 // alguna entrada vino incompleta.
@@ -69,6 +69,7 @@ function rowToMenuDia(r) {
     precioRecojo: Number(r.precio_recojo),
     precioDelivery: Number(r.precio_delivery),
     precioEntradaExtra: Number(r.precio_entrada_extra),
+    precioCasa: r.precio_casa == null ? PRECIOS_POR_DEFECTO.precioCasa : Number(r.precio_casa),
     refresco: r.refresco || "",
     nota: r.nota || "",
   };
@@ -191,6 +192,7 @@ export async function asegurarMenuDia(fecha) {
     precio_recojo: anterior?.precio_recojo ?? PRECIOS_POR_DEFECTO.precioRecojo,
     precio_delivery: anterior?.precio_delivery ?? PRECIOS_POR_DEFECTO.precioDelivery,
     precio_entrada_extra: anterior?.precio_entrada_extra ?? PRECIOS_POR_DEFECTO.precioEntradaExtra,
+    precio_casa: anterior?.precio_casa ?? PRECIOS_POR_DEFECTO.precioCasa,
     refresco: anterior?.refresco ?? "",
   };
   const { data, error } = await supabase.from("menu_dia").upsert(row, { onConflict: "fecha" }).select().single();
@@ -203,6 +205,7 @@ export async function actualizarMenuDia(fecha, cambios) {
   if ("precioRecojo" in cambios) row.precio_recojo = Number(cambios.precioRecojo) || 0;
   if ("precioDelivery" in cambios) row.precio_delivery = Number(cambios.precioDelivery) || 0;
   if ("precioEntradaExtra" in cambios) row.precio_entrada_extra = Number(cambios.precioEntradaExtra) || 0;
+  if ("precioCasa" in cambios) row.precio_casa = Number(cambios.precioCasa) || 0;
   if ("refresco" in cambios) row.refresco = cambios.refresco;
   if ("nota" in cambios) row.nota = cambios.nota;
   const { error } = await supabase.from("menu_dia").update(row).eq("fecha", fecha);
@@ -264,6 +267,7 @@ export async function copiarMenu(desde, hacia) {
       precioRecojo: origen.dia.precioRecojo,
       precioDelivery: origen.dia.precioDelivery,
       precioEntradaExtra: origen.dia.precioEntradaExtra,
+      precioCasa: origen.dia.precioCasa,
       refresco: origen.dia.refresco,
     });
   }

@@ -55,6 +55,19 @@ export function totalDePedido(o) {
   return calcularTotal(o.fondos, o.entradas, o.modo, o.adicionales);
 }
 
+// Precio de un menú según cómo se lo lleva: recojo, delivery o "en casa"
+// (come aquí; solo lo anota el papá en el Cuaderno, S/ 11 por defecto).
+export const PRECIO_CASA_POR_DEFECTO = 11;
+export function precioMenuDe(dia, modo = "recojo") {
+  if (!dia) return 0;
+  if (modo === "delivery") return dia.precioDelivery;
+  if (modo === "casa") return dia.precioCasa ?? PRECIO_CASA_POR_DEFECTO;
+  return dia.precioRecojo;
+}
+
+// Cómo se muestra el modo en la pantalla.
+export const MODO_LABELS = { recojo: "Llevar", delivery: "Delivery", casa: "En casa" };
+
 // Total estimado del carrito del cliente con los precios del menú del día.
 // Es la misma cuenta que hace la base de datos al guardar el pedido
 // (función validar_pedido), que es la que manda.
@@ -63,7 +76,7 @@ export function totalCarrito({ menus, entradasExtra, extras }, dia, modo) {
   const nMenus = menus.reduce((a, m) => a + m.cantidad, 0);
   const nEntradas = Object.values(entradasExtra).reduce((a, q) => a + q, 0);
   const totalExtras = extras.reduce((a, x) => a + x.cantidad * x.precio, 0);
-  const precioMenu = modo === "delivery" ? dia.precioDelivery : dia.precioRecojo;
+  const precioMenu = precioMenuDe(dia, modo);
   return nMenus * precioMenu + nEntradas * dia.precioEntradaExtra + totalExtras;
 }
 
@@ -77,7 +90,7 @@ export function calcularTotalDia({ fondos = [], entradas = [], adicionales = [] 
   const nMenus = sumarCantidades(fondos);
   const incluidas = fondos.reduce((a, f) => a + (f.entradaIncluida ? f.cantidad || 0 : 0), 0);
   const entradasSolas = Math.max(0, sumarCantidades(entradas) - incluidas);
-  const precioMenu = modo === "delivery" ? dia.precioDelivery : dia.precioRecojo;
+  const precioMenu = precioMenuDe(dia, modo);
   const totalAdicionales = adicionales.reduce((a, x) => a + (x.cantidad || 0) * (x.precio || 0), 0);
   return nMenus * precioMenu + entradasSolas * dia.precioEntradaExtra + totalAdicionales;
 }

@@ -10,7 +10,7 @@
 // No usa leerPedido.js (que llama a Supabase): el lector local ya devuelve
 // solo ids del menú de hoy.
 import { leerPedidoLocal } from "./leerPedidoLocal";
-import { calcularTotalDia } from "../utils/pedidos";
+import { calcularTotalDia, precioMenuDe } from "../utils/pedidos";
 
 // Menús / entradas / adicionales del lector → líneas tal como se guardan en
 // la tabla "orders" (mismo formato que los pedidos de la página).
@@ -202,7 +202,7 @@ export function textoLinea(m, ctx) {
 }
 
 // Precio de una línea de menús (la entrada va incluida).
-export const precioLinea = (m, dia, modo = "recojo") => (dia ? m.cantidad * (modo === "delivery" ? dia.precioDelivery : dia.precioRecojo) : 0);
+export const precioLinea = (m, dia, modo = "recojo") => (dia ? m.cantidad * precioMenuDe(dia, modo) : 0);
 
 // Estado de botones → pedido (líneas como en la tabla, total y lo que falta).
 export function armarDesdeBotones(estado, ctx, dia, modo = "recojo") {
@@ -261,9 +261,11 @@ export function conteoCocina(orders) {
   const ext = new Map();
   let menus = 0;
   let delivery = 0;
+  let casa = 0;
   const sumar = (mapa, nombre, n) => mapa.set(nombre, (mapa.get(nombre) || 0) + n);
   for (const o of orders) {
     if (o.modo === "delivery") delivery++;
+    if (o.modo === "casa") casa++;
     for (const f of o.fondos || []) {
       const n = f.cantidad || 0;
       menus += n;
@@ -290,13 +292,15 @@ export function conteoCocina(orders) {
     menus,
     pedidos: orders.length,
     delivery,
-    llevar: orders.length - delivery,
+    casa,
+    llevar: orders.length - delivery - casa,
   };
 }
 
 // Texto para mandar a la cocina por WhatsApp o copiar.
 export function textoCocina(c, titulo = "Para la cocina") {
-  const l = [`*${titulo}*`, `${c.menus} menús · ${c.pedidos} pedidos (${c.llevar} para llevar, ${c.delivery} delivery)`, ""];
+  const enCasa = c.casa ? `, ${c.casa} en casa` : "";
+  const l = [`*${titulo}*`, `${c.menus} menús · ${c.pedidos} pedidos (${c.llevar} para llevar, ${c.delivery} delivery${enCasa})`, ""];
   if (c.segundos.length) {
     l.push("*Segundos*");
     c.segundos.forEach((s) => {
