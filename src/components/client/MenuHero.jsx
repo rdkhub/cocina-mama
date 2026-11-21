@@ -27,7 +27,7 @@ export function MenuHero({ menuHoy, onAdmin, avatar = "/mama/mama-saluda-chica.w
             href={WHATSAPP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 bg-[#1f9d55] text-white text-[13px] font-bold px-3 py-2 rounded-full shadow-[0_3px_0_#14713c]"
+            className="relative flex items-center gap-1.5 bg-[#1f9d55] text-white text-[13px] font-bold px-3 py-2 rounded-full shadow-[0_3px_0_#14713c] after:absolute after:-inset-y-1 after:inset-x-0 after:content-['']"
           >
             <MessageCircle size={15} /> WhatsApp
           </a>
@@ -35,7 +35,7 @@ export function MenuHero({ menuHoy, onAdmin, avatar = "/mama/mama-saluda-chica.w
             onClick={onAdmin}
             aria-label="Panel de administración"
             title="Panel de administración"
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-tinta-oscura/70 text-[#cfc3ad] hover:text-dorado"
+            className="relative w-9 h-9 rounded-full flex items-center justify-center bg-tinta-oscura/70 text-[#cfc3ad] hover:text-dorado after:absolute after:-inset-1 after:content-['']"
           >
             <Lock size={15} />
           </button>
@@ -83,8 +83,14 @@ export function MenuHero({ menuHoy, onAdmin, avatar = "/mama/mama-saluda-chica.w
               </div>
             )}
             <div className="text-[12.5px] text-[#cfc3ad] mb-2">
-              {fechaLabel(menuHoy.fecha)}
-              {dia ? ` · Entrada + segundo + ${dia.refresco ? dia.refresco.trim().toLowerCase() : "refresco"}` : ""}
+              {/* Cada parte en una pieza: en celular se parte entre la fecha y el menú, no a la mitad. */}
+              <span className="whitespace-nowrap">{fechaLabel(menuHoy.fecha)}</span>
+              {dia && (
+                <>
+                  {" · "}
+                  <span className="whitespace-nowrap">Entrada + segundo + {dia.refresco ? dia.refresco.trim().toLowerCase() : "refresco"}</span>
+                </>
+              )}
             </div>
             <EstadoLocal claro />
           </div>
