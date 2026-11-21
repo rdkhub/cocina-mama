@@ -38,6 +38,8 @@ const db = {
     plato("p-papa", "Papa a la huancaína", "entrada"),
     plato("p-chicha", "Chicha morada (1 L)", "bebida", { precio_extra: 6 }),
     plato("p-flan", "Flan", "postre", { precio_extra: 3.5 }),
+    plato("p-presa", "Presa extra", "adicional", { precio_extra: 6 }),
+    plato("p-huevo", "Huevo sancochado", "adicional", { precio_extra: 1.5 }),
   ],
   proteinas: [
     { id: "pr-1", nombre: "Chuleta" },
@@ -91,8 +93,13 @@ function validar(row, esNuevo) {
   const ids = [
     ...(row.fondos || []).flatMap((f) => [f.platoId, f.entradaId].filter(Boolean)),
     ...(row.entradas || []).map((e) => e.platoId),
-    ...(row.adicionales || []).map((a) => a.platoId),
   ];
+  // Adicionales fijos (categoría "adicional", activos y con precio): valen aunque no estén en el menú del día.
+  for (const a of row.adicionales || []) {
+    const p = db.platos.find((x) => x.id === a.platoId);
+    const fijo = p && p.categoria === "adicional" && p.activo !== false && p.precio_extra > 0;
+    if (!fijo) ids.push(a.platoId);
+  }
   for (const id of ids) {
     const it = items.find((i) => i.plato_id === id);
     if (!it || (esNuevo && it.agotado)) return { message: `AGOTADO: ${db.platos.find((p) => p.id === id)?.nombre || "un plato"}` };

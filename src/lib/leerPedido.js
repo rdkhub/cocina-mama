@@ -7,8 +7,10 @@ import { supabase } from "../supabaseClient";
 import { leerPedidoLocal } from "./leerPedidoLocal";
 
 // Arma la lista de platos de hoy (sin los agotados) que usan los dos lectores.
-export function contextoDelMenu(menuHoy, platos = []) {
-  const disponibles = (lista) => lista.filter((x) => !x.item.agotado);
+// conAgotados: también trae lo agotado (marcado con agotado: true). Lo usa el
+// Cuaderno al corregir un pedido viejo, para no perder un plato que se agotó después.
+export function contextoDelMenu(menuHoy, platos = [], { conAgotados = false } = {}) {
+  const disponibles = (lista) => (conAgotados ? lista : lista.filter((x) => !x.item.agotado));
   return {
     segundos: disponibles(menuHoy.segundos).map(({ item, plato }) => ({
       id: plato.id,
@@ -16,9 +18,10 @@ export function contextoDelMenu(menuHoy, platos = []) {
       proteinas: plato.requiereProteina ? item.proteinas : [],
       requiereProteina: plato.requiereProteina && item.proteinas.length > 0,
       permiteArroz: plato.permiteArroz,
+      agotado: !!item.agotado,
     })),
-    entradas: disponibles(menuHoy.entradas).map(({ plato }) => ({ id: plato.id, nombre: plato.nombre.trim() })),
-    extras: disponibles(menuHoy.extras).map(({ plato }) => ({ id: plato.id, nombre: plato.nombre.trim(), precio: plato.precioExtra })),
+    entradas: disponibles(menuHoy.entradas).map(({ item, plato }) => ({ id: plato.id, nombre: plato.nombre.trim(), agotado: !!item.agotado })),
+    extras: disponibles(menuHoy.extras).map(({ item, plato }) => ({ id: plato.id, nombre: plato.nombre.trim(), precio: plato.precioExtra, agotado: !!item.agotado })),
     // Todo el catálogo, para avisar si piden algo que hoy no hay.
     catalogo: platos.filter((p) => p.activo).map((p) => ({ id: p.id, nombre: p.nombre.trim() })),
   };

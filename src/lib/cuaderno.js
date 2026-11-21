@@ -166,6 +166,44 @@ export function nuevaLinea(segundo, ctx) {
   };
 }
 
+// Contexto del Cuaderno: el del menú de hoy (con lo agotado, para poder
+// corregir pedidos viejos) más los "adicionales fijos" del catálogo (huevo
+// sancochado, presa extra, plancha…): platos de categoría "adicional", activos
+// y con precio, que el papá puede anotar cualquier día aunque no estén en el
+// menú. La base de datos los acepta igual (validar_pedido).
+export function contextoCuaderno(ctx, platos = []) {
+  const yaHoy = new Set(ctx.extras.map((e) => e.id));
+  const fijos = platos
+    .filter((p) => p.activo && p.categoria === "adicional" && p.precioExtra > 0 && !yaHoy.has(p.id))
+    .map((p) => ({ id: p.id, nombre: p.nombre.trim(), precio: p.precioExtra, agotado: false, fijo: true }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return { ...ctx, extras: [...ctx.extras, ...fijos] };
+}
+
+// Lo que falta elegir en un menú antes de agregarlo ("" si está completo).
+export function faltaEnLinea(m, ctx) {
+  const s = ctx.segundos.find((x) => x.id === m.segundoId);
+  if (!s) return "Ese plato ya no está en el menú de hoy.";
+  if (s.requiereProteina && !m.proteina) return `Elige la proteína de ${s.nombre}.`;
+  if (ctx.entradas.length > 0 && !m.entradaId) return `Elige la entrada de ${s.nombre} (o "Sin entrada").`;
+  return "";
+}
+
+// "2 × Lomo saltado · pollo · con sopa · sin arroz", para que se vea qué lleva cada línea.
+export function textoLinea(m, ctx) {
+  const s = ctx.segundos.find((x) => x.id === m.segundoId);
+  const e = ctx.entradas.find((x) => x.id === m.entradaId);
+  const partes = [`${m.cantidad} × ${s ? s.nombre : "Plato"}`];
+  if (m.proteina) partes.push(m.proteina.toLowerCase());
+  if (e) partes.push(`con ${e.nombre.toLowerCase()}`);
+  else if (m.entradaId === "sin" && ctx.entradas.length) partes.push("sin entrada");
+  if (m.arroz === "sin") partes.push("sin arroz");
+  return partes.join(" · ");
+}
+
+// Precio de una línea de menús (la entrada va incluida).
+export const precioLinea = (m, dia, modo = "recojo") => (dia ? m.cantidad * (modo === "delivery" ? dia.precioDelivery : dia.precioRecojo) : 0);
+
 // Estado de botones → pedido (líneas como en la tabla, total y lo que falta).
 export function armarDesdeBotones(estado, ctx, dia, modo = "recojo") {
   const segPorId = new Map(ctx.segundos.map((s) => [s.id, s]));
@@ -180,16 +218,9 @@ export function armarDesdeBotones(estado, ctx, dia, modo = "recojo") {
 
   let falta = "";
   for (const m of estado.menus) {
-    const s = segPorId.get(m.segundoId);
-    if (!s || m.cantidad < 1) continue;
-    if (s.requiereProteina && !m.proteina) {
-      falta = `Elige la proteína de ${s.nombre}.`;
-      break;
-    }
-    if (ctx.entradas.length > 0 && !m.entradaId) {
-      falta = `Elige la entrada de ${s.nombre} (o "Sin entrada").`;
-      break;
-    }
+    if (!segPorId.has(m.segundoId) || m.cantidad < 1) continue;
+    falta = faltaEnLinea(m, ctx);
+    if (falta) break;
   }
   const vacio = lineas.fondos.length + lineas.entradas.length + lineas.adicionales.length === 0;
   return { lineas, total: calcularTotalDia(lineas, dia, modo), falta, vacio };

@@ -1,10 +1,10 @@
 // src/components/admin/OrderCard.jsx
 import { useState } from "react";
-import { Phone, Clock, Trash2, CheckCircle2, Circle, Wallet } from "lucide-react";
+import { Phone, Clock, Trash2, CheckCircle2, Circle, Wallet, Pencil } from "lucide-react";
 import { Tag, ConfirmDialog } from "../ui";
 import { PAY_LABELS, PAY_COLORS, soles } from "../../utils/pedidos";
 
-export function OrderCard({ order, onUpdate, onDelete, resaltado }) {
+export function OrderCard({ order, onUpdate, onDelete, onCorregir, resaltado }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Las entradas guardadas en el pedido incluyen TANTO las que vinieron incluidas
@@ -58,9 +58,20 @@ export function OrderCard({ order, onUpdate, onDelete, resaltado }) {
         </div>
         <div className="text-right">
           <div className="text-terracota font-semibold font-mono text-[15px]">{soles(order.total)}</div>
-          <button onClick={() => setConfirmOpen(true)} aria-label="Borrar este pedido" className="text-arena-hover hover:text-terracota p-1">
-            <Trash2 size={16} />
-          </button>
+          <div className="flex items-center justify-end gap-0.5">
+            {onCorregir && (
+              <button
+                onClick={() => onCorregir(order.id)}
+                className="text-[13px] font-semibold text-terracota flex items-center gap-1 px-2 py-2"
+                aria-label={`Corregir el pedido de ${order.nombre}`}
+              >
+                <Pencil size={14} /> Corregir
+              </button>
+            )}
+            <button onClick={() => setConfirmOpen(true)} aria-label="Borrar este pedido" className="text-arena-hover hover:text-terracota p-2">
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
