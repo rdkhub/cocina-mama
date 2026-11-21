@@ -6,9 +6,8 @@
 
 ## 1. Dónde estamos
 
-- **En producción** (`main`, desplegado en Vercel): PR #9 a #17 fusionados. Último commit en `main`: `0aff229` (merge del PR #17).
+- **En producción** (`main`, desplegado en Vercel): PR #9 a #18 fusionados. Último commit de código en `main`: `baafadb` (merge del PR #18, Cuaderno nuevo). Migración `adicionales_fijos` aplicada en Supabase.
 - **PR abiertos:**
-  - **`feature/cuaderno-editar-adicionales`**: corregir cualquier pedido, armar platos sin juntarlos, notas, adicionales fijos, listos abajo en Hoy y "Para la cocina" que descuenta lo listo. **Trae una migración que falta aplicar en Supabase** (`20261121120000_adicionales_fijos.sql`). Ver la sección "Sesión del 21-nov (tarde)".
   - **#8 `feature/foto-cuaderno`** (20-oct): leer con IA una foto de la hoja del cuaderno. **Tiene conflictos con `main`.** Falta tu decisión (ver el paso 5 de la sección 3).
 - **Ramas viejas sin borrar** (no se borran sin tu permiso): `docs/claude-md` y `fix/numeracion-pasos`, ya fusionadas.
 - **Proyecto "lector automático de WhatsApp" (fase B): DESCARTADO por ahora.** No hay forma oficial y gratis sin RUC (ver la sección 2.1). La fase 1 (compartir mensajes a la app y leerlos con IA o con el lector local) sigue funcionando.
@@ -26,7 +25,8 @@ Pedido de Rodrigo (urgente: corregir pedidos).
 - **Notas** en el Cuaderno (otro plato que no está, "sin cebolla"…). Se ven en la lista y en Hoy.
 - **Adicionales fijos:** platos de categoría **Adicional**, activos y con precio (ej. presa extra S/ 6, plancha extra, bistec extra, huevo sancochado) salen siempre en el Cuaderno, aunque no estén en el menú del día. **Hay que crearlos en Platos** (en producción hoy solo existe "Alitas", con precio 0, que no sale).
 - **Hoy:** los pendientes arriba ("faltan N") y los listos abajo, en "Listos". **"Para la cocina" empieza en "Falta servir"**: al marcar listo, sus platos se descuentan.
-- Migración `20261121120000_adicionales_fijos.sql`: `validar_pedido` acepta esos adicionales sin estar en el menú del día. Producción coincidía con el repo antes de escribirla.
+- Migración `20261121120000_adicionales_fijos.sql`: `validar_pedido` acepta esos adicionales sin estar en el menú del día. Producción coincidía con el repo antes de escribirla. **Aplicada el 21-nov** (en Supabase figura como `20261121204636 adicionales_fijos`) y probada con una transacción que se deshizo sola sobre un pedido real: mismo contenido → mismo total (39); 2 adicionales fijos de S/ 6 → 51; un adicional con precio 0 y un postre fuera del menú siguen dando "AGOTADO". Siguen igual `security definer`, `search_path` y permisos. No se probó crear un pedido nuevo (dispararía el aviso push); el camino es el mismo.
+- PR #18 fusionado y desplegado.
 - 15 tests nuevos (`src/lib/__tests__/cuadernoLineas.test.js`, escritos por OpenCode y revisados). **Total: 72.**
 - **PR #8 revisado:** tiene conflictos (toca `AdminView`, `PedidosTab`, `AppContext`, `leerPedido`). Su función `leer-cuaderno` **ya está desplegada en Supabase** aunque el código no está en `main`; solo la puede usar el admin (`es_admin`), así que no hay riesgo de gasto por terceros.
 
@@ -114,7 +114,7 @@ Pedido de Rodrigo (urgente: corregir pedidos).
 
 ## 3. Próximos pasos (en orden)
 
-1. **Cuaderno nuevo:** aplicar la migración `20261121120000_adicionales_fijos.sql` en Supabase, merge del PR con tu OK, y crear en Platos los adicionales (categoría Adicional, con precio).
+1. **Crear en Platos los adicionales** (categoría Adicional, con precio): presa extra S/ 6, plancha extra S/ 6, bistec extra S/ 6, huevo sancochado (precio por definir). Hasta entonces la sección "Adicionales" del Cuaderno no aparece. "Alitas" tiene precio 0 y no sale.
 2. **Probar en un celular real** lo que no se pudo probar aquí:
    - intro y Mamá en movimiento;
    - vibración;
